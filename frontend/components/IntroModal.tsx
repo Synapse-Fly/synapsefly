@@ -3,6 +3,7 @@
 // Shown once per browser (localStorage) and reopenable from the taskbar "What is this?" button. Zero new deps.
 import { useEffect } from "react";
 import type { FlySocket } from "@/lib/ws";
+import { TOKEN, X_URL, GITHUB_URL } from "@/lib/brand";
 
 export interface IntroModalProps {
   sock: FlySocket;
@@ -34,7 +35,6 @@ export default function IntroModal({ sock, onClose }: IntroModalProps) {
   const n = hello?.connectome.n ?? 20000;
   const chain = hello?.market.chain ?? "";
   const token = hello?.market.token ?? "";
-  const symbol = hello?.market.symbol ?? "FLY";
   const chartUrl = chain && token ? `https://dexscreener.com/${chain}/${token}` : "https://dexscreener.com";
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function IntroModal({ sock, onClose }: IntroModalProps) {
         <div className="titlebar flex items-center gap-2 text-[13px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/favicon-48.png" alt="" width={16} height={16} style={PIXELATED} />
-          <span className="flex-1">SynapseFly (${symbol}) — what is this?</span>
+          <span className="flex-1">SynapseFly (${TOKEN}) — what is this?</span>
           <button type="button" className="btn95 h-[18px] w-[20px] text-[11px] leading-[12px]" onClick={onClose} aria-label="Close" title="Close">x</button>
         </div>
 
@@ -106,11 +106,19 @@ export default function IntroModal({ sock, onClose }: IntroModalProps) {
         </div>
 
         {/* footer */}
-        <div className="flex items-center gap-2 bg-win-gray px-3 pb-3">
-          <a className="btn95 flex h-[24px] items-center text-[12px]" href={chartUrl} target="_blank" rel="noopener noreferrer" title="Live chart on DexScreener">
-            Chart ↗
+        <div className="flex flex-wrap items-center gap-2 bg-win-gray px-3 pb-3">
+          <a className="btn95 flex h-[24px] items-center text-[12px]" href={X_URL} target="_blank" rel="noopener noreferrer" title="Follow on X">
+            𝕏 Follow
           </a>
-          <div className="flex-1" />
+          <a className="btn95 flex h-[24px] items-center text-[12px]" href={GITHUB_URL} target="_blank" rel="noopener noreferrer" title="Source on GitHub">
+            GitHub ↗
+          </a>
+          {token ? (
+            <a className="btn95 flex h-[24px] items-center text-[12px]" href={chartUrl} target="_blank" rel="noopener noreferrer" title="Live chart on DexScreener">
+              Chart ↗
+            </a>
+          ) : null}
+          <div className="min-w-[8px] flex-1" />
           <button type="button" className="btn95 h-[24px] px-3 text-[12px] font-bold" onClick={onClose} autoFocus>
             Enter the canvas →
           </button>

@@ -3,6 +3,7 @@
 // document size, mood badge, price ticker, RTF / brain speed / n / e, market source badge, WS dot. Re-renders at 4 Hz
 // through useTickSnapshot (never from a tick handler).
 import type { ReactNode } from "react";
+import { TOKEN } from "@/lib/brand";
 import type { TickStore } from "@/lib/store";
 import { useTickSnapshot } from "@/lib/store";
 import type { HelloMsg, Mood } from "@/lib/types";
@@ -51,7 +52,7 @@ export default function StatusBar({ store, hello, status, attempt, fps, moodNow 
   const mood: Mood = fresh && moodNow ? moodNow.to : tick?.mood.state ?? "CRUISING";
   const mc = moodColor(mood, tick ? tick.t_ms / 1000 : 0);
   const m = tick?.market;
-  const symbol = m?.symbol ?? hello?.market.symbol ?? "FLY";
+  const symbol = TOKEN;
   const chg = m ? m.chg_m5 : 0;
   const dot = status === "open" ? "#00a800" : status === "connecting" ? "#e0c000" : "#d00000";
   const wsText = status === "open" ? "online" : status === "connecting" ? "connecting" : status === "closed" ? "closed" : `reconnecting (${attempt})`;

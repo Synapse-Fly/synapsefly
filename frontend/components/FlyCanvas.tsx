@@ -8,6 +8,7 @@
 // derived from the click position relative to the fly heading, rate-limited to one per 500 ms client-side.
 // Imperative handle: clear(), composite() (trail + overlay + a 24 px caption bar, for snapshots / Save As), dirty().
 import { useCallback, useEffect, useImperativeHandle, useRef, type PointerEvent as ReactPointerEvent, type Ref } from "react";
+import { TOKEN } from "@/lib/brand";
 import type { FlySocket } from "@/lib/ws";
 import type { FlyState, InkStyle, Mood, PokeStim } from "@/lib/types";
 import { interpolate, type FlyPose } from "@/lib/interp";
@@ -125,7 +126,7 @@ export default function FlyCanvas({ sock, onFps, flip, pokeStim = "sugar", ref }
     ctx.fillRect(0, h + 1, w, 1);
     const t = store.latest()?.tick ?? null;
     const mood: Mood = t?.mood.state ?? "CRUISING";
-    const sym = t?.market.symbol ?? hello?.market.symbol ?? "FLY";
+    const sym = TOKEN;
     const price = fmtPrice(t?.market.price_usd ?? null);
     const chg = t ? `${t.market.chg_m5 >= 0 ? "+" : ""}${t.market.chg_m5.toFixed(1)}%` : "-";
     const secs = t ? (t.t_ms / 1000).toFixed(1) : "0.0";

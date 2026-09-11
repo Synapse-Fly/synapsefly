@@ -11,6 +11,7 @@ import type { FlySocket } from "@/lib/ws";
 import type { TickStore } from "@/lib/store";
 import type { Candle, MarketMode, MarketMsg, MarketSnapshot, TickMarket, TickMsg, Trade } from "@/lib/types";
 import { fmtCompact, fmtPrice, postMarketMode } from "@/lib/api";
+import { TOKEN } from "@/lib/brand";
 
 export interface MarketTickerProps { sock: FlySocket }
 
@@ -310,7 +311,7 @@ export function MarketTicker({ sock }: MarketTickerProps) {
   // wall reference for trade ages: the server's publish time of the latest 4 Hz tick snapshot (never the client clock)
   const nowWall = tick ? tick.wall : (m ? m.ts : 0);
   const lastTrade: Trade | null = snap.trades.length ? snap.trades[snap.trades.length - 1] : (tick?.market.last_trade ?? null);
-  const symbol = m?.symbol ?? hello?.market.symbol ?? "FLY";
+  const symbol = TOKEN;  // brand ticker; feed symbol may be a placeholder until the real token lists
   const source = m?.source ?? hello?.market.mode ?? "sim";
   const regime = m?.regime ?? null;
   const price = m ? (m.price_usd ?? m.price_native) : null;

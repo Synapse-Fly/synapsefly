@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 const SITE = "https://www.synapsefly.com";
-const TITLE = "SynapseFly ($FLY) — a fruit-fly brain trading on vibes";
+const TITLE = "SynapseFly ($SYNAPSE) — a fruit-fly brain trading on vibes";
 const DESC =
   "A real fruit-fly connectome (~166k neurons) wired to the market, simulated live. " +
   "Buys feed it, sells scare it. It paints the price on a canvas and tweets its own brain.";
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESC,
     siteName: "SynapseFly",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "SynapseFly $FLY" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "SynapseFly $SYNAPSE" }],
   },
   twitter: {
     card: "summary_large_image",

@@ -1,5 +1,5 @@
 "use client";
-// SPEC section e.5 `PaintWindow`: "untitled - Paint ($FLY)" with the Paint icon; MenuBar row, then
+// SPEC section e.5 `PaintWindow`: "untitled - Paint ($SYNAPSE)" with the Paint icon; MenuBar row, then
 // [ToolPalette | workspace], then ColorPalette, then StatusBar. The workspace is a win-gray area holding the white
 // 800 x 500 document (hello.canvas) inside a .bevel-in frame with three inert 3 px resize handles. 880 x 680 at (16, 16).
 import { useCallback, useEffect, useState, type RefObject } from "react";
@@ -7,7 +7,7 @@ import type { FlySocket } from "@/lib/ws";
 import { useTickSnapshot } from "@/lib/store";
 import type { InkStyle, Mood, PokeStim } from "@/lib/types";
 import Win95Window from "./Win95Window";
-import MenuBar, { PaintIcon, type MenuAction, type MenuFlags } from "./MenuBar";
+import MenuBar, { type MenuAction, type MenuFlags } from "./MenuBar";
 import ToolPalette from "./ToolPalette";
 import ColorPalette from "./ColorPalette";
 import StatusBar from "./StatusBar";
@@ -60,8 +60,11 @@ export default function PaintWindow({ sock, onAction, canvasRef, flags = {} }: P
   return (
     <Win95Window
       id="paint"
-      title="untitled - Paint ($FLY)"
-      icon={<PaintIcon />}
+      title="untitled - Paint ($SYNAPSE)"
+      icon={
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src="/favicon-48.png" alt="" width={16} height={16} style={{ imageRendering: "pixelated" }} />
+      }
       initial={PAINT_RECT}
       menu={<MenuBar sock={sock} onAction={onAction} flags={flags} />}
       statusBar={<StatusBar store={sock.store} hello={sock.hello} status={sock.status} attempt={sock.attempt} fps={flags.fps ? fps : null} moodNow={moodNow} />}

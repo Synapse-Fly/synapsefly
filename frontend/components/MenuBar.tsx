@@ -224,6 +224,8 @@ export default function MenuBar({ sock, onAction, flags = {} }: MenuBarProps) {
       data-menu-open={open !== null ? "true" : undefined}
       role="menubar"
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/favicon-48.png" alt="SynapseFly" width={18} height={18} className="ml-[2px] mr-[3px]" style={{ imageRendering: "pixelated" }} />
       {menus.map((m, i) => (
         <div key={m.label} className="relative">
           <div
@@ -270,7 +272,7 @@ export function AboutDialog({ hello, store, onClose }: AboutDialogProps) {
   return (
     <MessageBox title="About FlyBrain" width={520} buttons={[{ label: "OK", onClick: onClose, default: true }]}
       icon={<PaintIcon size={32} />}>
-      <div className="mb-2 font-bold">SynapseFly / FlyBrain ($FLY)</div>
+      <div className="mb-2 font-bold">SynapseFly / FlyBrain ($SYNAPSE)</div>
       <div className="mb-2">A spiking Drosophila male CNS shaped brain (MaleCNS v1.0 shape) wired to a token market, painting in a Win95 Paint window.</div>
       <table className="w-full border-collapse text-[11px]">
         <tbody>
