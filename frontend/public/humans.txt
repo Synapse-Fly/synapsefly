@@ -1,0 +1,8 @@
+/* TEAM */
+  SynapseFly — a fruit-fly brain wired to the market.
+  X: @SynapseFly
+  Source: github.com/Synapse-Fly/synapsefly
+
+/* TECH */
+  Next.js, TypeScript, three.js, FastAPI, numpy spiking-neural-net.
+  Brain: Janelia FlyEM MaleCNS connectome (CC-BY).
