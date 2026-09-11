@@ -20,7 +20,7 @@ export interface PaintWindowProps {
   flags?: Partial<MenuFlags>;
 }
 
-export const PAINT_RECT = { x: 16, y: 16, w: 880, h: 680 };
+export const PAINT_RECT = { x: 16, y: 16, w: 880, h: 600 };
 const DEFAULT_INK: InkStyle = { color: "#000000", width: 2, alpha: 1, style: "solid", stamp: null };
 
 export default function PaintWindow({ sock, onAction, canvasRef, flags = {} }: PaintWindowProps) {

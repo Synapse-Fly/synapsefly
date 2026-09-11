@@ -156,6 +156,15 @@ export default function Home() {
         case "link":
           window.open(a.url, "_blank", "noopener,noreferrer");
           break;
+        case "reset_layout":
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith("fly.win.")) localStorage.removeItem(k);
+            }
+          } catch { /* ignore */ }
+          location.reload();
+          break;
         case "exit":
           shakeWindow("paint");
           break;
@@ -223,19 +232,19 @@ export default function Home() {
     <div className="min-h-screen pb-[34px]" data-testid="desktop">
       <div className={desktopClass} style={desktopStyle}>
         <PaintWindow sock={sock} onAction={dispatch} canvasRef={canvasRef} flags={flags} />
-        <Win95Window id="raster" title="Oscilloscope - spike raster" icon={<OscilloscopeIcon />} initial={{ x: 912, y: 16, w: 560, h: 470 }}>
+        <Win95Window id="raster" title="Oscilloscope - spike raster" icon={<OscilloscopeIcon />} initial={{ x: 912, y: 16, w: 560, h: 300 }}>
           <SpikeRaster sock={sock} frozen={flags.frozen} labels={flags.labels} />
         </Win95Window>
-        <Win95Window id="status" title="Fly Status" icon={<StatusIcon />} initial={{ x: 912, y: 500, w: 560, h: 260 }}>
+        <Win95Window id="status" title="Fly Status" icon={<StatusIcon />} initial={{ x: 912, y: 332, w: 560, h: 290 }}>
           <div className="grid h-full min-h-0 grid-cols-2 gap-[2px] overflow-hidden bg-win-gray">
             <div className="min-h-0 overflow-auto"><MoodPanel sock={sock} /></div>
             <div className="min-h-0 overflow-auto"><MarketTicker sock={sock} /></div>
           </div>
         </Win95Window>
-        <Win95Window id="brain" title="Fly Brain (3D) - live connectome" icon={<BrainIcon />} initial={{ x: 1480, y: 16, w: 440, h: 620 }}>
+        <Win95Window id="brain" title="Fly Brain (3D) - live connectome" icon={<BrainIcon />} initial={{ x: 912, y: 638, w: 560, h: 430 }}>
           <BrainView3D sock={sock} />
         </Win95Window>
-        <Win95Window id="tweets" title="tweets.txt - Notepad" icon={<NotepadIcon />} initial={{ x: 16, y: 712, w: 880, h: 180 }} collapsible>
+        <Win95Window id="tweets" title="tweets.txt - Notepad" icon={<NotepadIcon />} initial={{ x: 16, y: 632, w: 880, h: 190 }} collapsible>
           <TweetNotepad sock={sock} onTest={() => dispatch({ kind: "tweet_test" })} />
         </Win95Window>
       </div>

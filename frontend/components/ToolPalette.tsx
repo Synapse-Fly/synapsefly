@@ -47,11 +47,11 @@ const PAINT_TOOLS: { name: string; glyph: ReactNode }[] = [
 
 /** Poke tools: stim, tooltip, glyph (section e.5). */
 export const POKE_TOOLS: { stim: PokeStim; name: string; key: string; glyph: ReactNode }[] = [
-  { stim: "sugar", name: "Sugar cube (S) - feed the fly", key: "S", glyph: <G title="Sugar"><path d="M4 6 L7 3 L13 3 L13 9 L10 12 L4 12 Z" fill="#fff" stroke="#000" /><path d="M4 6 L10 6 L10 12" fill="none" stroke="#808080" /><path d="M10 6 L13 3" stroke="#808080" /></G> },
-  { stim: "loom", name: "Red candle / sell wall (L) - looming threat", key: "L", glyph: <G title="Loom"><rect x="7" y="1" width="2" height="14" fill="#a80000" /><rect x="4" y="4" width="8" height="8" fill="#ff0000" stroke="#a80000" /></G> },
-  { stim: "bitter", name: "Bitter leaf (B) - aversive taste", key: "B", glyph: <G title="Bitter"><path d="M3 13 C 3 6, 8 2, 14 2 C 14 8, 9 13, 3 13 Z" fill="#008000" stroke="#004000" /><path d="M4 12 L12 4" stroke="#00c000" /></G> },
-  { stim: "water", name: "Water drop (W)", key: "W", glyph: <G title="Water"><path d="M8 1 C 10 5, 13 8, 13 10.5 A 5 5 0 0 1 3 10.5 C 3 8, 6 5, 8 1 Z" fill="#0080ff" stroke="#004080" /><rect x="5" y="9" width="1" height="2" fill="#fff" /></G> },
-  { stim: "dust", name: "Dust (D) - grooming", key: "D", glyph: <G title="Dust">{[[3, 4], [6, 2], [9, 5], [12, 3], [4, 8], [8, 8], [11, 9], [2, 12], [6, 11], [10, 13], [13, 12], [7, 5]].map(([x, y], i) => <rect key={i} x={x} y={y} width={i % 3 === 0 ? 2 : 1} height={i % 3 === 0 ? 2 : 1} fill={i % 2 ? "#808040" : "#a08060"} />)}</G> },
+  { stim: "sugar", name: "Sugar (S) - poke a fake BUY: feeds the fly, it gets happy", key: "S", glyph: <G title="Sugar"><path d="M4 6 L7 3 L13 3 L13 9 L10 12 L4 12 Z" fill="#fff" stroke="#000" /><path d="M4 6 L10 6 L10 12" fill="none" stroke="#808080" /><path d="M10 6 L13 3" stroke="#808080" /></G> },
+  { stim: "loom", name: "Sell wall (L) - poke a fake SELL: a looming threat, the fly panics", key: "L", glyph: <G title="Loom"><rect x="7" y="1" width="2" height="14" fill="#a80000" /><rect x="4" y="4" width="8" height="8" fill="#ff0000" stroke="#a80000" /></G> },
+  { stim: "bitter", name: "Bitter (B) - an aversive taste, the fly recoils", key: "B", glyph: <G title="Bitter"><path d="M3 13 C 3 6, 8 2, 14 2 C 14 8, 9 13, 3 13 Z" fill="#008000" stroke="#004000" /><path d="M4 12 L12 4" stroke="#00c000" /></G> },
+  { stim: "water", name: "Water (W) - a drink", key: "W", glyph: <G title="Water"><path d="M8 1 C 10 5, 13 8, 13 10.5 A 5 5 0 0 1 3 10.5 C 3 8, 6 5, 8 1 Z" fill="#0080ff" stroke="#004080" /><rect x="5" y="9" width="1" height="2" fill="#fff" /></G> },
+  { stim: "dust", name: "Dust (D) - makes the fly stop and groom", key: "D", glyph: <G title="Dust">{[[3, 4], [6, 2], [9, 5], [12, 3], [4, 8], [8, 8], [11, 9], [2, 12], [6, 11], [10, 13], [13, 12], [7, 5]].map(([x, y], i) => <rect key={i} x={x} y={y} width={i % 3 === 0 ? 2 : 1} height={i % 3 === 0 ? 2 : 1} fill={i % 2 ? "#808040" : "#a08060"} />)}</G> },
 ];
 
 export default function ToolPalette({ active, onPoke, lastPoke, inkWidth = 2, inkColor = "#000000" }: ToolPaletteProps) {

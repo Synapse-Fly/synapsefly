@@ -18,6 +18,7 @@ export type MenuAction =
   | { kind: "toggle"; what: "labels" | "freeze" | "zoom" | "fps" | "flip" }
   | { kind: "about" }
   | { kind: "link"; url: string }
+  | { kind: "reset_layout" }
   | { kind: "exit" };
 
 export interface MenuFlags { labels: boolean; frozen: boolean; zoom: boolean; fps: boolean; flip: boolean }
@@ -104,6 +105,8 @@ function buildMenus(flags: Partial<MenuFlags>, hello: HelloMsg | null): Menu[] {
         { label: "Freeze raster", shortcut: "F", action: { kind: "toggle", what: "freeze" }, checked: flags.frozen ?? false },
         { label: "Zoom 1.5x", action: { kind: "toggle", what: "zoom" }, checked: flags.zoom ?? false },
         { label: "Show FPS", action: { kind: "toggle", what: "fps" }, checked: flags.fps ?? false },
+        { sep: true, label: "" },
+        { label: "Reset window layout", action: { kind: "reset_layout" } },
       ],
     },
     {

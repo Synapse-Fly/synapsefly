@@ -14,6 +14,18 @@ export interface MoodPanelProps { sock: FlySocket }
 
 /** The 8 moods in hello.mood_states order (section d.1). */
 export const MOOD_LIST: readonly Mood[] = ["SLEEP", "CRUISING", "FEEDING", "EUPHORIA", "ANXIOUS", "PANIC", "ESCAPE", "COURTSHIP"];
+
+/** Visitor-friendly tooltip per mood (lights up when the fly is in that state). */
+const MOOD_TIP: Record<Mood, string> = {
+  SLEEP: "SLEEP — flat, dead market, the fly dozes off (lights up when active)",
+  CRUISING: "CRUISING — calm market, the fly just wanders and doodles",
+  FEEDING: "FEEDING — a buy fed its sugar neurons; it stops to eat",
+  EUPHORIA: "EUPHORIA — strong buying; the fly is loving it, loops and hearts",
+  ANXIOUS: "ANXIOUS — selling pressure building; it gets jittery",
+  PANIC: "PANIC — heavy selling; looming + escape circuits fire, it darts",
+  ESCAPE: "ESCAPE — a giant-fiber jump; the fly bolted",
+  COURTSHIP: "COURTSHIP — the male-specific song circuit lit up",
+};
 /** Population table rows (section e.5). */
 export const PANEL_POPS: readonly string[] = ["gf_L", "gf_R", "dn_freeze", "dng100", "steer_a02_L", "steer_a02_R", "feed_mn", "flight_dn", "p1", "pam", "ppl1"];
 const SPARK_N = 32;            // 8 s at 4 Hz
@@ -315,7 +327,7 @@ export function MoodPanel({ sock }: MoodPanelProps) {
         </div>
         <div className="ml-auto flex flex-wrap justify-end gap-[2px]">
           {moods.map((m) => (
-            <span key={m} className="btn95 flex items-center gap-1 text-[9px] leading-[14px]" aria-pressed={m === state} title={m}>
+            <span key={m} className="btn95 flex items-center gap-1 text-[9px] leading-[14px]" aria-pressed={m === state} title={MOOD_TIP[m]}>
               <span className="inline-block h-[8px] w-[8px] border border-black" style={{ background: moodColor(m, tSec) }} />
               {m}
             </span>
