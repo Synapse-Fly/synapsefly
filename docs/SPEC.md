@@ -1414,7 +1414,7 @@ Full example with realistic numbers (calibrated synthetic 20k, sim market in `PU
  "ink":{"color":"#00a800","width":2.0,"alpha":1.0,"style":"solid","stamp":null},
  "mood":{"state":"CRUISING","prev":"FEEDING","since_ms":17250,"euphoria":0.12,"anxiety":0.05,"arousal":0.30,
          "valence":0.07,"fear":0.05,"hunger":0.41,"sleep":0.0,"dwell_left_ms":0},
- "market":{"source":"sim","mode":"sim","ts":1789051563.0,"seq":617,"chain":"sim","dex":"sim","pair":"SIM","symbol":"FLY",
+ "market":{"source":"sim","mode":"sim","ts":1789051563.0,"seq":617,"chain":"sim","dex":"sim","pair":"SIM","symbol":"FLY","token_live":false,
            "price_usd":0.0012345,"price_native":0.0012345,"buys_m5":41,"sells_m5":27,"buys_h1":402,"sells_h1":377,
            "chg_m5":1.2,"chg_h1":-3.4,"chg_h6":5.1,"chg_h24":12.7,"vol_m5":5120.5,"vol_h1":61230.0,
            "liq_usd":50210.0,"fdv":1234500.0,"mcap":1234500.0,"regime":"PUMP",
@@ -1492,7 +1492,7 @@ The same record (plus `summary`) is what `GET /api/tweets` returns.
 
 ```json
 {"type":"market","seq":12345,"t_ms":617350,"wall":1789051563.12,"mode":"sim",
- "market":{"source":"sim","ts":1789051563.0,"seq":617,"chain":"sim","dex":"sim","pair":"SIM","symbol":"FLY","price_usd":0.0012345,
+ "market":{"source":"sim","ts":1789051563.0,"seq":617,"chain":"sim","dex":"sim","pair":"SIM","symbol":"FLY","token_live":false,"price_usd":0.0012345,
            "price_native":0.0012345,"buys_m5":41,"sells_m5":27,"buys_h1":402,"sells_h1":377,"chg_m5":1.2,"chg_h1":-3.4,
            "chg_h6":5.1,"chg_h24":12.7,"vol_m5":5120.5,"vol_h1":61230.0,"liq_usd":50210.0,"fdv":1234500.0,"mcap":1234500.0,
            "regime":"PUMP"},

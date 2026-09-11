@@ -1,13 +1,17 @@
 # Documentation consistency tests owned by E8 (frontend panels + docs).
 #
-# The README (section 8, "Kuklacilik listesi") and docs/NOTICE.md promise that the list of engineered ("[E]")
-# projection rows printed for reviewers matches the shipped synthetic generator. This test enforces that promise
-# so the two cannot drift silently: it parses the E-projection ids out of README section 8 and compares them with
+# `docs/PUPPETEERING.md` and `docs/NOTICE.md` promise that the list of engineered ("[E]") projection rows printed for
+# reviewers matches the shipped synthetic generator. This test enforces that promise so the two cannot drift silently:
+# it parses the E-projection ids out of PUPPETEERING section 3 and compares them with
 # `flybrain.connectome.synthetic.PROJECTIONS` (provenance == "E").
+#
+# The disclosure used to be section 8 of a Turkish engineering README. That README was replaced by the short public
+# README (commit 0f0d804), which has no numbered sections at all, so the E-list moved to `docs/PUPPETEERING.md` and
+# these markers follow it there; the README and NOTICE section 3 link to it.
 #
 # NOTE: `synthetic.py` is owned by E1. If it cannot be imported (partial/broken during parallel development) the
 # import-dependent assertions skip rather than fail - a broken generator is E1's failure, caught by E1's own tests.
-# The pure-text assertions (README <-> NOTICE self-consistency) always run.
+# The pure-text assertions always run.
 import re
 import sys
 from collections import Counter
@@ -19,6 +23,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND = REPO_ROOT / "backend"
 README = REPO_ROOT / "README.md"
 NOTICE = REPO_ROOT / "docs" / "NOTICE.md"
+PUPPET = REPO_ROOT / "docs" / "PUPPETEERING.md"
+
+#: The E-list lives in PUPPETEERING section 3 ("The 21 engineered projection rows"); section 4 reconciles 112 vs 114.
+E_LIST_MARKERS = ("## 3.", "## 4.")
 
 # A projection id token "Pnnn", not preceded by a letter/digit (so the inner "P020" of "PVLP020" is not matched)
 # and not followed by another digit.
@@ -38,13 +46,13 @@ def _section(text: str, start_marker: str, end_marker: str) -> str:
     return text[i : (j if j >= 0 else len(text))]
 
 
-def _readme_e_pids(section8: str) -> set[str]:
-    """Every engineered projection id mentioned in README section 8, expanding "Pxxx-Pyyy" ranges inclusively."""
+def _doc_e_pids(section: str) -> set[str]:
+    """Every engineered projection id mentioned in the E-list section, expanding "Pxxx-Pyyy" ranges inclusively."""
     pids: set[str] = set()
-    for lo, hi in _RANGE.findall(section8):
+    for lo, hi in _RANGE.findall(section):
         for k in range(int(lo), int(hi) + 1):
             pids.add(f"P{k:03d}")
-    for m in _SINGLE.findall(section8):
+    for m in _SINGLE.findall(section):
         pids.add(f"P{int(m):03d}")
     return pids
 
@@ -59,55 +67,60 @@ def _load_projections():
     return PROJECTIONS
 
 
-def test_readme_and_notice_exist():
+def test_docs_exist_and_cross_reference_the_e_list():
     assert README.is_file(), f"missing {README}"
     assert NOTICE.is_file(), f"missing {NOTICE}"
+    assert PUPPET.is_file(), f"missing {PUPPET}"
+    # The E-list is only a disclosure if a reader can find it from the two documents people actually open.
+    assert "PUPPETEERING.md" in _read(NOTICE), "NOTICE must point at the engineered-row list"
+    assert "PUPPETEERING.md" in _read(README), "README must point at the engineered-row list"
 
 
-def test_readme_section8_lists_engineered_projections():
-    section8 = _section(_read(README), "## 8.", "## 9.")
-    pids = _readme_e_pids(section8)
+def test_puppeteering_lists_engineered_projections():
+    section = _section(_read(PUPPET), *E_LIST_MARKERS)
+    pids = _doc_e_pids(section)
     # The GF rest-brake rows P113/P114 must be documented (they suppress the resting giant fiber; see NOTICE section 3).
-    assert {"P113", "P114"} <= pids, "README section 8 must document the GF rest-brake rows P113 and P114"
-    assert len(pids) >= 19, f"README section 8 lists too few engineered rows: {sorted(pids)}"
+    assert {"P113", "P114"} <= pids, "PUPPETEERING section 3 must document the GF rest-brake rows P113 and P114"
+    assert len(pids) >= 19, f"PUPPETEERING section 3 lists too few engineered rows: {sorted(pids)}"
 
 
-def test_readme_e_projection_list_matches_generator():
-    """README section 8 E-list == the generator's provenance=='E' ids (anti-drift, promised by NOTICE section 3)."""
+def test_doc_e_projection_list_matches_generator():
+    """The doc's E-list == the generator's provenance=='E' ids (anti-drift, promised by NOTICE section 3)."""
     projections = _load_projections()
     code_e = {p.pid for p in projections if getattr(p, "provenance", None) == "E"}
     assert code_e, "the synthetic generator exposes no engineered ('E') projections"
-    section8 = _section(_read(README), "## 8.", "## 9.")
-    readme_e = _readme_e_pids(section8)
-    missing = code_e - readme_e            # engineered rows the README fails to disclose
-    extra = readme_e - code_e              # rows the README claims but the generator does not produce
-    assert not missing, f"README section 8 omits engineered projection rows present in synthetic.py: {sorted(missing)}"
-    assert not extra, f"README section 8 lists engineered rows absent from synthetic.py: {sorted(extra)}"
+    section = _section(_read(PUPPET), *E_LIST_MARKERS)
+    doc_e = _doc_e_pids(section)
+    missing = code_e - doc_e               # engineered rows the doc fails to disclose
+    extra = doc_e - code_e                 # rows the doc claims but the generator does not produce
+    assert not missing, f"PUPPETEERING omits engineered projection rows present in synthetic.py: {sorted(missing)}"
+    assert not extra, f"PUPPETEERING lists engineered rows absent from synthetic.py: {sorted(extra)}"
 
 
-def test_readme_provenance_counts_match_generator():
-    """The counts quoted in README section 8 (total / V / D / E) match the generator."""
+def test_doc_provenance_counts_match_generator():
+    """The counts quoted in the E-list section (total / V / D / E) match the generator."""
     projections = _load_projections()
     counts = Counter(getattr(p, "provenance", None) for p in projections)
     total, v, d, e = len(projections), counts.get("V", 0), counts.get("D", 0), counts.get("E", 0)
-    section8 = _section(_read(README), "## 8.", "## 9.")
-    # The numbers appear as standalone tokens in the section-8 sentence "114 ... 79'u V ... 14'u D ... 21'i E".
-    nums = set(re.findall(r"\d+", section8))
+    section = _section(_read(PUPPET), *E_LIST_MARKERS)
+    # The numbers appear as standalone tokens in the sentence "114 projection rules: 79 V, 14 D and 21 E".
+    nums = set(re.findall(r"\d+", section))
     for label, value in (("total", total), ("V", v), ("D", d), ("E", e)):
-        assert str(value) in nums, f"README section 8 does not quote the {label} projection count {value}"
+        assert str(value) in nums, f"PUPPETEERING section 3 does not quote the {label} projection count {value}"
 
 
-def test_readme_design_sections_reconcile_projection_count():
-    """The design sections mirror the SPEC's 112-rule figure, but every mention must point the reader at the
-    shipped 114 (section 8 reconciles them) so no design section leaves a reader with a bare, contradictory count.
-    SPEC section 0 / section g.3 say 112 (19 E); the shipped generator produces 114 (21 E). Regression guard for the
-    reviewer-flagged 'a reader sees both figures' inconsistency: keep 112 (SPEC design) but always cross-reference 114.
-    """
-    text = _read(README)
-    for start, end in (("## 1.", "## 2."), ("## 3.", "## 4.")):
-        sec = _section(text, start, end)
-        if "112" in sec and "projeksiyon" in sec.lower():
-            assert "114" in sec, (
-                f"README {start} quotes the design count 112 projections without cross-referencing the shipped 114 "
-                "(section 8 reconciles 112-vs-114); a reader must not be left with a bare, contradictory figure"
+def test_docs_reconcile_the_projection_count():
+    """SPEC section 0 / section g.3 say 112 rules (19 E); the shipped generator produces 114 (21 E). Regression guard
+    for the reviewer-flagged "a reader sees both figures" inconsistency: any doc that quotes 112 in a projection
+    context must cross-reference the shipped 114, so no reader is left with a bare, contradictory figure."""
+    assert "112" in _read(PUPPET), "PUPPETEERING must name the SPEC design count 112"
+    for doc in (PUPPET, NOTICE, README):
+        text = _read(doc)
+        for m in re.finditer(r"(?<![0-9])112(?![0-9])", text):
+            window = text[max(0, m.start() - 300):m.end() + 300]
+            if "projection" not in window.lower():
+                continue
+            assert "114" in window, (
+                f"{doc.name} quotes the design count 112 projections without cross-referencing the shipped 114; "
+                "a reader must not be left with a bare, contradictory figure"
             )

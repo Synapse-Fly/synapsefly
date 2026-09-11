@@ -11,7 +11,7 @@ import type { FlySocket } from "@/lib/ws";
 import type { TickStore } from "@/lib/store";
 import type { Candle, MarketMode, MarketMsg, MarketSnapshot, TickMarket, TickMsg, Trade } from "@/lib/types";
 import { fmtCompact, fmtPrice, postMarketMode } from "@/lib/api";
-import { TOKEN } from "@/lib/brand";
+import { NOT_LAUNCHED, NOT_LAUNCHED_NOTE, SIM_FEED_NOTE, TOKEN, standInFeedNote, tokenLive } from "@/lib/brand";
 
 export interface MarketTickerProps { sock: FlySocket }
 
@@ -53,6 +53,12 @@ function sourceBadge(src: string | null | undefined): string {
   if (src === "dexscreener") return "DEX";
   if (src === "sim(fallback)") return "SIM(fallback)";
   return "SIM";
+}
+
+/** `0xA70fc6...E313` - the tracked pair, short enough for an 11 px panel but still checkable against a chart. */
+function shortPair(p: string | null | undefined): string {
+  const s = typeof p === "string" ? p.trim() : "";
+  return s.length <= 14 ? s : `${s.slice(0, 6)}…${s.slice(-4)}`;
 }
 
 // ------------------------------------------------------------------------------------------------ history store
@@ -313,6 +319,13 @@ export function MarketTicker({ sock }: MarketTickerProps) {
   const lastTrade: Trade | null = snap.trades.length ? snap.trades[snap.trades.length - 1] : (tick?.market.last_trade ?? null);
   const symbol = TOKEN;  // brand ticker; feed symbol may be a placeholder until the real token lists
   const source = m?.source ?? hello?.market.mode ?? "sim";
+  // No $SYNAPSE market has listed yet, so the default feed is a simulator. A price under a real ticker must never be
+  // able to read as a live quote: say "simulated" in words, not only in a 9px badge.
+  const simulated = source.startsWith("sim");
+  // ...and when the source IS a live DEX feed it is still not ours: until the server says `token_live`, the pair on
+  // screen belongs to somebody else's token, so the panel names it instead of letting it wear the brand. The tick is
+  // the freshest carrier of the flag, hello the fallback, and a missing flag counts as "not launched" (brand.ts).
+  const live = tokenLive(tick?.market.token_live, hello?.market.token_live);
   const regime = m?.regime ?? null;
   const price = m ? (m.price_usd ?? m.price_native) : null;
   const buys = m?.buys_m5 ?? 0, sells = m?.sells_m5 ?? 0;
@@ -353,9 +366,16 @@ export function MarketTicker({ sock }: MarketTickerProps) {
 
   return (
     <div className="flex h-full flex-col gap-1 overflow-auto bg-win-gray p-1 text-[11px]" data-testid="market-ticker">
-      {/* header: symbol, source badge, regime chip */}
-      <div className="flex items-center gap-1">
-        <span className="text-[13px] font-bold">${symbol}</span>
+      {/* header: symbol, source badge, regime chip. It WRAPS rather than overflowing: in a narrow Fly Status window
+          the chain/dex label on the right used to be cut off at the pane edge (the same "squeezed until unreadable"
+          problem the Paint status bar had). A second line costs 14 px; a clipped label costs the information. */}
+      <div className="flex flex-wrap items-center gap-1">
+        {/* The ticker never stands alone over a number that is not ours: while `token_live` is false the qualifier is
+            part of the ticker itself, in red, at the same size - not a footnote a two-second glance can skip. */}
+        <span className="text-[13px] font-bold" data-testid="ticker-symbol">
+          ${symbol}
+          {live ? (simulated ? " (simulated)" : "") : <span style={{ color: "#a80000" }}> — {NOT_LAUNCHED}</span>}
+        </span>
         <span className="border border-black px-1 text-[9px] font-bold" style={{ background: source === "dexscreener" ? "#000080" : source === "sim(fallback)" ? "#a80000" : "#008080", color: "#fff" }} title={`market source: ${source}`} data-testid="source-badge">
           {sourceBadge(source)}
         </span>
@@ -369,6 +389,22 @@ export function MarketTicker({ sock }: MarketTickerProps) {
       <div className="font-mono text-[16px] font-bold leading-[18px]" data-testid="price">
         ${fmtPrice(price)}
       </div>
+      {simulated ? (
+        <div className="text-[10px] text-[#a80000]" data-testid="sim-disclaimer">
+          {SIM_FEED_NOTE}
+        </div>
+      ) : null}
+      {/* The live-but-borrowed state, which is the dangerous one: a REAL pair, traded by real people, whose price,
+          liquidity and market cap would otherwise render under this brand. Name it from the tick - symbol, dex,
+          chain and pair are whatever the server is polling today, never a hardcoded ticker. */}
+      {!live && !simulated ? (
+        <div className="bevel-in bg-white px-1 py-[2px] text-[10px] leading-[13px] text-[#a80000]"
+          data-testid="standin-disclaimer"
+          title={`the brain's sensory input: ${m?.symbol ?? "?"} / ${m?.dex ?? "?"} / ${m?.chain ?? "?"} / ${m?.pair ?? "?"} - not a $${TOKEN} market`}>
+          <div className="font-bold">{standInFeedNote(m?.symbol, m?.dex, m?.chain)}</div>
+          <div>{NOT_LAUNCHED_NOTE} The brain only reads this pair{m?.pair ? ` (${shortPair(m.pair)})` : ""}.</div>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-x-2 gap-y-0">
         <Pct label="m5" v={m?.chg_m5} />
         <Pct label="h1" v={m?.chg_h1} />
@@ -385,8 +421,10 @@ export function MarketTicker({ sock }: MarketTickerProps) {
         <span className="w-[44px] text-right font-mono text-[10px] text-[#a80000]">{sells} sell</span>
       </div>
 
-      {/* volume / liquidity / mcap */}
+      {/* volume / liquidity / mcap. A 188M market cap is the single most misreadable number on this panel, so while
+          the feed is somebody else's the row is prefixed with whose it is. */}
       <div className="flex flex-wrap gap-x-2 text-[#404040]">
+        {!live && !simulated && m?.symbol ? <span className="font-bold text-[#a80000]" data-testid="standin-figures">{m.symbol}:</span> : null}
         <span>vol m5 <b className="font-mono text-black">{fmtCompact(m?.vol_m5)}</b></span>
         <span>liq <b className="font-mono text-black">{fmtCompact(m?.liq_usd)}</b></span>
         <span>mcap <b className="font-mono text-black">{fmtCompact(m?.mcap ?? m?.fdv)}</b></span>

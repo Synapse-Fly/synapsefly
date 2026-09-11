@@ -175,13 +175,27 @@ def test_health(client: TestClient) -> None:
     assert body["rtf"] > 0.0
     assert set(body["connectome"]) == {"name", "source", "n", "e", "gain", "license"}
     assert body["connectome"]["n"] == 4000 and body["connectome"]["source"] == "synthetic"
-    assert set(body["market"]) == {"mode", "ok", "last_poll", "failures"}
+    assert set(body["market"]) == {"mode", "ok", "last_poll", "failures", "token_live"}
     assert body["market"]["mode"] == "sim" and body["market"]["ok"] is True
+    assert body["market"]["token_live"] is False   # FLY_TOKEN_LIVE defaults off until the token launches
     assert set(body["agent"]) == {"llm", "x", "tweets_today", "last_tweet_wall", "disabled_reason"}
     assert body["agent"]["llm"] == "dryrun" and body["agent"]["x"] == "dryrun"
     assert body["clients"] == 0
     assert isinstance(body["log_tail"], list) and body["log_tail"]
     HealthResponse.model_validate(body)
+
+
+def test_health_log_tail_is_opt_out(tmp_path: Path, patched_connectome: Any) -> None:
+    """``FLY_HEALTH_LOG_TAIL=0`` empties the ring in ``/api/health`` without changing the SPEC c.28 shape.
+
+    The endpoint is unauthenticated and public in production (api.synapsefly.com), and the ring carries uvicorn
+    access lines with client addresses plus internal loop diagnostics.
+    """
+    app = app_mod.create_app(make_settings(tmp_path, FLY_HEALTH_LOG_TAIL="0"))
+    with TestClient(app) as c:
+        body = c.get("/api/health").json()
+        assert "log_tail" in body and body["log_tail"] == []
+        assert body["run_id"] and body["uptime_s"] >= 0.0          # the summary fields are always there
 
 
 def test_state_has_hello_and_tick(client: TestClient) -> None:

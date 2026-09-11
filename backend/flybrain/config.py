@@ -141,6 +141,13 @@ class Settings:
     market: str = "sim"                       # sim|dexscreener
     token_address: str = ""
     chain: str = "solana"
+    #: ``FLY_TOKEN_LIVE``. **False by default, and that default is the honest one**: the pair named by
+    #: ``token_address`` is a THIRD-PARTY stand-in used only as the brain's sensory input, and this project's
+    #: own token has not launched. Every surface that shows the feed (``hello.market``, ``tick.market``,
+    #: ``GET /api/health``, ``GET /api/config``, the LLM summary) carries this flag so no price, market cap or
+    #: liquidity is ever rendered as the project's own. Flip it to ``1`` only together with the real pair
+    #: address (see ``deploy/DEPLOY.md``, "Going live with the real token").
+    token_live: bool = False
     dex_poll_s: int = 60
     sim_regime_s: float = 90.0
     # agent
@@ -171,6 +178,11 @@ class Settings:
     data_dir: Path = Path("data")             # absolute after load_settings
     out_dir: Path = Path("out")
     log_level: str = "INFO"
+    #: Include the recent-log ring in ``GET /api/health`` (SPEC c.28). True is the local/operator default; set
+    #: ``FLY_HEALTH_LOG_TAIL=0`` on a publicly reachable API so the endpoint cannot hand out access lines with
+    #: client addresses and internal loop diagnostics to anyone who curls it. The key is always present, so the
+    #: response shape does not change - it is just empty.
+    health_log_tail: bool = True
     # derived (filled by load_settings)
     tick_ms: float = 50.0
     steps_per_tick: int = 50
@@ -257,6 +269,8 @@ ENV_VARS: Final[tuple[EnvVar, ...]] = (
     EnvVar("FLY_MARKET", "market", "choice", MARKET_SOURCES),
     EnvVar("FLY_TOKEN_ADDRESS", "token_address", "str"),
     EnvVar("FLY_CHAIN", "chain", "str"),
+    EnvVar("FLY_TOKEN_LIVE", "token_live", "bool",
+           note="0 (default) = the tracked pair is a stand-in feed and this project's token has not launched"),
     EnvVar("FLY_DEX_POLL_S", "dex_poll_s", "int", lo=15, hi=86_400),
     EnvVar("FLY_SIM_REGIME_S", "sim_regime_s", "float", lo=1.0, hi=86_400.0),
     # ---- agent (LLM)
@@ -293,6 +307,7 @@ ENV_VARS: Final[tuple[EnvVar, ...]] = (
     EnvVar("FLY_DATA_DIR", "data_dir", "path"),
     EnvVar("FLY_OUT_DIR", "out_dir", "path"),
     EnvVar("FLY_LOG_LEVEL", "log_level", "level"),
+    EnvVar("FLY_HEALTH_LOG_TAIL", "health_log_tail", "bool"),
     # ---- data scripts only
     EnvVar("NEUPRINT_APPLICATION_CREDENTIALS", "", "secret"),
     # ---- frontend (recognised, never stored)
@@ -617,6 +632,12 @@ def load_settings(env: Mapping[str, str] | None = None, dotenv: Path | str | Non
     # cross-field checks ---------------------------------------------------------------------------
     if settings.market == "dexscreener" and not settings.token_address:
         log.warning("config: FLY_MARKET=dexscreener without FLY_TOKEN_ADDRESS; the feed will fall back to sim")
+    if settings.token_live and not settings.token_address:
+        log.warning("config: FLY_TOKEN_LIVE=1 without FLY_TOKEN_ADDRESS; the UI will claim a launched token "
+                    "for a pair that is not configured")
+    if settings.token_live and settings.market != "dexscreener":
+        log.warning("config: FLY_TOKEN_LIVE=1 with FLY_MARKET=%s; a simulated feed is not a live token",
+                    settings.market)
     if settings.llm == "anthropic" and not str(process_env.get("ANTHROPIC_API_KEY", "")).strip():
         log.warning("config: FLY_LLM=anthropic without ANTHROPIC_API_KEY; the agent degrades to templates")
     if settings.x_mode == "post":

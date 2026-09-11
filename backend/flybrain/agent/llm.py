@@ -12,6 +12,12 @@ Two sources of text:
 ``validate_tweet`` cleans any text (URL strip, whitespace, quotes, 280-char word-boundary cap, <= 2 hashtags, no
 cashtags other than $FLY) and requires at least one ``VOCABULARY`` token so a tweet is always neuroscientifically
 literal. Provenance: every neuron name below is a real MaleCNS type or group name [V] (RESEARCH section 4).
+
+Honesty, both paths: the brain is a synthetic stand-in unless real data is loaded (``connectome.source``), and the
+market feed is somebody else's pair unless ``FLY_TOKEN_LIVE=1`` says otherwise (``summary.market.token_live``, false
+by default - this project has no token yet). ``SYSTEM_PROMPT`` states both rules to the model, and ``{symbol}`` in the
+templates renders as "the feed" rather than a ticker while the flag is false, so no generated text can attach a price,
+a market cap or a liquidity number to this project's name.
 """
 
 from __future__ import annotations
@@ -40,15 +46,20 @@ __all__ = [
 
 log = logging.getLogger("flybrain.agent.llm")
 
-# SPEC d.6, verbatim (line breaks as printed there).
+# SPEC d.6, plus the two honesty clauses this project treats as load-bearing: the brain is a synthetic stand-in
+# (connectome.source) and, while market.token_live is false, so is the market feed (FLY_TOKEN_LIVE). Neither may be
+# presented as the real thing.
 SYSTEM_PROMPT: str = (
     "You are FlyBrain, a spiking simulation of the Drosophila male CNS connectome (MaleCNS v1.0 shaped) whose senses are wired\n"
-    "to the $FLY token market. You receive a JSON summary of your brain state and the market. Write exactly ONE tweet of at most\n"
+    "to a token market feed. You receive a JSON summary of your brain state and that feed. Write exactly ONE tweet of at most\n"
     "240 characters in absurd, self-aware crypto dialect (gm, ser, wagmi, ngmi, cope, degen, candles, liquidity) that is also\n"
     "neuroscientifically literal: name at least one concrete neuron group from the JSON (for example sugar GRNs LB3b, MN9\n"
     "proboscis, giant fiber DNp01, LC4/LPLC2 looming, DNa02 steering, PAM dopamine, mushroom body). If connectome.source is\n"
-    "\"synthetic\", never claim the data is the real connectome. No URLs, no financial advice, no promises of returns, no cashtags\n"
-    "other than $FLY, at most 2 hashtags, no emojis. Return only the JSON object {\"text\": string, \"neurons\": string[]}."
+    "\"synthetic\", never claim the data is the real connectome. If market.token_live is false, this project has NO token of its\n"
+    "own yet and market.symbol is somebody else's pair that is only wired to your senses: call it \"the feed\" or \"the market\",\n"
+    "never name that ticker, and never present its price, market cap or liquidity as this project's own - use no cashtag at all.\n"
+    "No URLs, no financial advice, no promises of returns, no cashtags other than $FLY, at most 2 hashtags, no emojis.\n"
+    "Return only the JSON object {\"text\": string, \"neurons\": string[]}."
 )
 
 _JSON_SENTENCE = "Return only the JSON object {\"text\": string, \"neurons\": string[]}."
@@ -141,6 +152,13 @@ def validate_tweet(text: str, require_vocab: bool = True) -> tuple[bool, str]:
 
 # --------------------------------------------------------------------------- templates
 # {vars} available to every template are produced by _template_vars(summary).
+#
+# No template contains a literal ticker: the one place a tweet can name the traded thing is ``{symbol}``, and while
+# ``market.token_live`` is false (the default - this project has no token yet) ``_template_vars`` fills it with the
+# neutral label below instead of the tracked pair's ticker. The rendered tweet then talks about "the feed" / "piyasa",
+# so neither the stand-in pair's ticker nor this project's brand is ever attached to a price, a market cap or a
+# liquidity number. When the operator sets FLY_TOKEN_LIVE=1 for the project's own pair, the real symbol is used.
+_STANDIN_SYMBOL: dict[str, str] = {"en": "the feed", "tr": "piyasa"}
 _TEMPLATES: dict[str, dict[str, tuple[str, ...]]] = {
     "en": {
         "euphoria_entry": (
@@ -168,7 +186,7 @@ _TEMPLATES: dict[str, dict[str, tuple[str, ...]]] = {
             "the market is {regime_low} and my antennal lobe reads it as pheromone. pC1 lit, pIP10 song descending neurons driving the wing at {wing_hz} Hz. degens, this is a mating call to the chart.",
             "one wing out, pIP10 singing, pC1 at {p1} Hz. valence {valence}, arousal {arousal}. the connectome has decided the green candle is a female. courtship song for {symbol}. wagmi.",
             "pIP10 pulse song at {wing_hz} Hz wingbeat, PAM dopamine {pam} Hz, central complex EPG heading locked on the candle. COURTSHIP. ser I am vibrating my wing at your liquidity.",
-            "arousal {arousal}: pC1 courtship neurons {p1} Hz, pIP10 {pip10} Hz, descending neuron song circuit online. mushroom body approves ({mbon_approach} Hz). courting the {symbol} chart, no cope.",
+            "arousal {arousal}: pC1 courtship neurons {p1} Hz, pIP10 {pip10} Hz, descending neuron song circuit online. mushroom body approves ({mbon_approach} Hz). courting {symbol}, no cope.",
         ),
         "escape_burst": (
             "{jumps_60s} escape jumps in 60 seconds. giant fiber DNp01 fired {gf_spikes_10min} times: LC4/LPLC2 looming detectors saw {sells_m5} sells as {sells_m5} predators. TTMn legs are tired, ser.",
@@ -271,8 +289,13 @@ def _template_vars(summary: dict) -> dict[str, Any]:
             hot_region, hot_hz = str(k), _f(v)
     regime = g("market", "regime")
     conn = s.get("connectome") if isinstance(s.get("connectome"), dict) else {}
+    # FLY_TOKEN_LIVE (summary.market.token_live): false means the tracked pair is somebody else's, wired to the
+    # brain as sensory input only, and this project has no token. The tweet then names the feed, never a ticker.
+    lang = str(s.get("lang") or "en").lower()
+    symbol = (str(g("market", "symbol") or "FLY") if bool(_get(s, "market", "token_live"))
+              else _STANDIN_SYMBOL.get(lang, _STANDIN_SYMBOL["en"]))
     v: dict[str, Any] = {
-        "symbol": str(g("market", "symbol") or "FLY"),
+        "symbol": symbol,
         "price": _fmt_price(g("market", "price_usd")),
         "chg_m5_signed": _signed(g("market", "chg_m5")),
         "chg_h1_signed": _signed(g("market", "chg_h1")),

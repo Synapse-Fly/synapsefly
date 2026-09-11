@@ -440,15 +440,21 @@ def _register_routes(app: FastAPI) -> None:
             "connectome": {"name": str(conn.name), "source": str(conn.source), "n": int(conn.n),
                            "e": int(conn.e), "gain": float(eng.gain),
                            "license": str(meta.get("license", "") or "")},
+            # token_live is the launch disclosure (FLY_TOKEN_LIVE, false by default): while it is false the tracked
+            # pair is a third-party stand-in used as sensory input and this project's token has not launched.
             "market": {"mode": str(market.get("mode", ctx.feed.mode)), "ok": bool(market.get("ok", True)),
-                       "last_poll": market.get("last_poll"), "failures": int(market.get("failures", 0))},
+                       "last_poll": market.get("last_poll"), "failures": int(market.get("failures", 0)),
+                       "token_live": bool(getattr(ctx.settings, "token_live", False))},
             "agent": {"llm": str(agent_status.get("llm", "dryrun")),
                       "x": str(agent_status.get("x", "dryrun")),
                       "tweets_today": int(agent_status.get("tweets_today", 0)),
                       "last_tweet_wall": agent_status.get("last_tweet_wall"),
                       "disabled_reason": agent_status.get("disabled_reason")},
             "clients": int(ctx.bus.client_count()),
-            "log_tail": ctx.ring.tail(50) if ctx.ring is not None else [],
+            # Public on api.synapsefly.com, so the ring is opt-out: with FLY_HEALTH_LOG_TAIL=0 the key stays
+            # (SPEC c.28 shape) but the access lines and loop diagnostics do not leave the box.
+            "log_tail": ctx.ring.tail(50) if (ctx.ring is not None
+                                              and bool(getattr(ctx.settings, "health_log_tail", True))) else [],
         }
 
     # ---------------------------------------------------------------- GET /api/state
@@ -471,7 +477,11 @@ def _register_routes(app: FastAPI) -> None:
     # ---------------------------------------------------------------- GET /api/config
     @app.get("/api/config")
     def config() -> dict:
-        """``redacted(settings)``: never a credential (SPEC c.1)."""
+        """``redacted(settings)``: never a credential (SPEC c.1).
+
+        Every ``Settings`` field is reported, so ``token_live`` (``FLY_TOKEN_LIVE``, false by default) is here
+        too: one GET tells an operator whether this box claims the tracked pair is this project's own token.
+        """
         ctx = getattr(app.state, "ctx", None)
         return redacted(ctx.settings if ctx is not None else app.state.settings)
 

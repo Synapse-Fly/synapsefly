@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FlySocket } from "@/lib/ws";
 import type { TweetMsg, TweetRecord } from "@/lib/types";
 import { getTweets } from "@/lib/api";
+import { GITHUB_URL, X_HANDLE, X_URL } from "@/lib/brand";
 
 export interface TweetNotepadProps { sock: FlySocket; onTest(): void }
 
@@ -124,6 +125,11 @@ export function TweetNotepad({ sock, onTest }: TweetNotepadProps) {
 
   const dryCount = tweets.filter((t) => t.dry_run).length;
   const postedCount = tweets.filter((t) => t.posted).length;
+  // An empty log because the backend is down reads exactly like an empty log because the fly is quiet. Say which -
+  // but only about a connection that has actually failed. "connecting" is the first second of a NORMAL page load
+  // (the REST history is still in flight then too), and announcing an outage during it would tell every first-time
+  // visitor the brain is down and hand them a link off the site. Same reasoning as OfflineNotice's grace period.
+  const offline = sock.status === "reconnecting" || sock.status === "closed";
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-win-gray text-[11px]" data-testid="tweet-notepad">
@@ -140,8 +146,22 @@ export function TweetNotepad({ sock, onTest }: TweetNotepadProps) {
       {/* the "text file" */}
       <div className="bevel-in min-h-0 flex-1 overflow-auto bg-white p-1 font-mono text-[12px] leading-[15px]" data-testid="tweet-list">
         {tweets.length === 0 ? (
-          <div className="text-[#404040]">
-            {loadError ? `tweets.txt: could not load history (${loadError}); waiting for live tweet frames` : "tweets.txt is empty - the fly has not tweeted yet. Press T or the button below for a dry-run test tweet."}
+          <div className="text-[#404040]" data-testid="tweet-empty">
+            {offline ? (
+              <>
+                <div>tweets.txt: the brain is not answering ({sock.status}) - this log fills in when it reconnects.</div>
+                <div className="mt-1">
+                  Nothing here is faked while it is offline. Everything the fly has actually posted is on{" "}
+                  <a href={X_URL} target="_blank" rel="noopener noreferrer" className="text-[#000080] underline">X {X_HANDLE}</a>
+                  {" · "}
+                  <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-[#000080] underline">GitHub (source)</a>
+                </div>
+              </>
+            ) : loadError ? (
+              `tweets.txt: could not load history (${loadError}); waiting for live tweet frames`
+            ) : (
+              "tweets.txt is empty - the fly has not tweeted yet. Press T or the button below for a dry-run test tweet."
+            )}
           </div>
         ) : tweets.map((t) => <TweetEntry key={t.id} t={t} />)}
       </div>

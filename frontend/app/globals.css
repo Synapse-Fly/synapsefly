@@ -154,3 +154,62 @@ canvas {
   scrollbar-width: thin;
   scrollbar-color: #808080 #dfdfdf;
 }
+
+/* PaintWindow scales the 800 x 500 document to fill the Paint window (lib/layout.ts fitDocBox). FlyCanvas puts the
+   bitmap size on its root div as an inline style, so the document frame has to override it; the two canvases inside
+   are already width/height 100% with image-rendering: pixelated, and pokes map back through getBoundingClientRect. */
+.paint-doc > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Taskbar: the window-button strip scrolls instead of pushing the tray (X / GitHub links, clock) off a narrow
+   screen. A 30 px taskbar has no room for a scrollbar, so it is hidden. */
+.taskbar-apps {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.taskbar-apps::-webkit-scrollbar {
+  height: 0;
+  display: none;
+}
+
+/* Win95 "system tray" divider between taskbar groups. */
+.tray-sep {
+  width: 2px;
+  height: 20px;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  margin: 0 2px;
+  flex: none;
+}
+
+/* ------------------------------------------------------------------------------------ prefers-reduced-motion
+
+   This page is made of motion, so a visitor who asked their OS for reduced motion gets the still version of the
+   chrome: every CSS animation (the window shake) runs out in a frame instead of playing, transitions stop, and
+   nothing scrolls smoothly. Nothing is blanked and the simulation is NOT switched off - the brain keeps running and
+   the trail keeps growing, the desktop just stops moving on its own.
+
+   The durations are 1 ms rather than 0 on purpose: `animationend` still fires, so the components that clear a class
+   when their animation ends (Win95Window's shake) keep working.
+
+   Motion that JavaScript draws rather than CSS is gated in the component that owns it, with the same media query
+   through matchMedia - see `usePrefersReducedMotion` in components/PaintWindow.tsx, which pins the rainbow phase of
+   the Paint colour box. The three canvases (FlyCanvas, SpikeRaster, BrainView3D) are the simulation being drawn;
+   each owns its own requestAnimationFrame loop. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}

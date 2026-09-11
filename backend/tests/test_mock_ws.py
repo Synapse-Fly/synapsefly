@@ -399,10 +399,17 @@ def test_drawing_libs_guard_nan_and_keep_state_per_canvas() -> None:
 
 
 def test_frontend_package_json_is_the_scaffold_plus_typecheck() -> None:
-    """SPEC i.3 / e.0: the only allowed package.json change is the `typecheck` script."""
+    """SPEC i.3 / e.0: the only allowed package.json change is the `typecheck` script.
+
+    Documented deviation: `three` / `@types/three` were added for the `BrainView3D` window (the live 3D fly-brain
+    view, commit 7e849f0), which needs WebGL and cannot be done with the 2-D canvas stack of SPEC e.4. Nothing else
+    may appear here - the rest of the frontend stays dependency-free.
+    """
     raw = read_frontend("package.json")
     pkg = json.loads(raw)
-    assert pkg["dependencies"] == {"next": "16.3.4", "react": "19.2.8", "react-dom": "19.2.8"}
+    assert set(pkg["dependencies"]) == {"next", "react", "react-dom", "three", "@types/three"}
+    assert {k: pkg["dependencies"][k] for k in ("next", "react", "react-dom")} == {
+        "next": "16.3.4", "react": "19.2.8", "react-dom": "19.2.8"}
     assert pkg["scripts"] == {"dev": "next dev", "build": "next build", "start": "next start",
                               "lint": "eslint", "typecheck": "tsc --noEmit"}
     env = read_frontend(".env.local.example").strip().splitlines()

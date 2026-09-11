@@ -254,7 +254,7 @@ def test_build_brain_summary_shape():
     assert s["rates_hz"]["grn_sugar"] == 131.0 and s["rates_hz"]["steer_a02_R"] == 19.0
     assert tuple(s["mood"].keys()) == ("state", "prev", "since_s", "euphoria", "anxiety", "valence", "arousal", "hunger")
     assert s["mood"]["since_s"] == 3.0
-    assert tuple(s["market"].keys()) == ("source", "symbol", "price_usd", "chg_m5", "chg_h1", "chg_h24", "buys_m5",
+    assert tuple(s["market"].keys()) == ("source", "symbol", "token_live", "price_usd", "chg_m5", "chg_h1", "chg_h24", "buys_m5",
                                          "sells_m5", "vol_m5", "liq_usd", "mcap", "regime", "last_trade")
     assert s["market"]["last_trade"] == {"kind": "buy", "usd": 940.0}
     assert tuple(s["drives"].keys()) == ("sugar", "bitter", "looming", "odor", "chop", "courtship", "sleep_pressure",
@@ -279,14 +279,14 @@ def test_build_brain_summary_shape():
     assert s["connectome"]["note"] == CONN_META["note"]
     assert s["connectome"]["name"] == CONN_META["name"]
     payload = summary_json(s)
-    assert len(payload.encode("utf-8")) <= MAX_SUMMARY_BYTES == 1500, len(payload)
+    assert len(payload.encode("utf-8")) <= MAX_SUMMARY_BYTES == 1560, len(payload)
     assert json.loads(payload) == s
     # the full d.6 shape with the canonical example numbers fits the budget for every reason and both languages
     for reason in TRIGGER_REASONS:
         for lang in ("en", "tr"):
             sr = build_brain_summary(tick, FakeHistory(gf=12, jumps=4), reason, CONN_META, session, tick["market"],
                                      lang)
-            assert tuple(sr.keys()) == SUMMARY_KEYS and len(summary_json(sr).encode("utf-8")) <= 1500
+            assert tuple(sr.keys()) == SUMMARY_KEYS and len(summary_json(sr).encode("utf-8")) <= MAX_SUMMARY_BYTES
     # realistic non-integral numbers (no ".0" savings) still fit and keep the 5 top types and the 19 rate keys
     tick_r = make_tick()
     for k in tick_r["rates"]["pops"]:
@@ -298,7 +298,7 @@ def test_build_brain_summary_shape():
     sr = build_brain_summary(tick_r, FakeHistory(gf=123, jumps=12), "panic_entry", CONN_META,
                              {"uptime_s": 86399.9, "tweets_today": 11, "last_tweet_reason": "courtship_entry",
                               "trail_px": 1234567}, tick_r["market"], "en")
-    assert len(summary_json(sr).encode("utf-8")) <= 1500 and tuple(sr.keys()) == SUMMARY_KEYS
+    assert len(summary_json(sr).encode("utf-8")) <= MAX_SUMMARY_BYTES and tuple(sr.keys()) == SUMMARY_KEYS
     assert len(sr["top_types"]) >= 3 and tuple(sr["rates_hz"].keys()) == RATE_KEYS
     assert sr["top_types"][0][0] == "LB3b" and sr["rates_hz"]["grn_sugar"] >= 131
     assert sr["vocabulary_hint"] and sr["vocabulary_hint"][0] == "giant fiber DNp01"
@@ -311,7 +311,7 @@ def test_build_brain_summary_shape():
     big_meta = {**CONN_META, "note": "x" * 400, "name": "n" * 200}
     many = FakeHistory(events=[{"kind": f"ev{i}", "t_ms": i, "data": {}} for i in range(40)])
     s3 = build_brain_summary(tick, many, "panic_entry", big_meta, session, tick["market"], "en")
-    assert len(summary_json(s3).encode("utf-8")) <= 1500 and tuple(s3.keys()) == SUMMARY_KEYS
+    assert len(summary_json(s3).encode("utf-8")) <= MAX_SUMMARY_BYTES and tuple(s3.keys()) == SUMMARY_KEYS
 
 
 # ----------------------------------------------------------------------------- templates / validation

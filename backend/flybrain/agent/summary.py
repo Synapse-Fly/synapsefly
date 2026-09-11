@@ -31,7 +31,9 @@ __all__ = [
 ]
 
 SUMMARY_SCHEMA = "flybrain.summary.v1"
-MAX_SUMMARY_BYTES = 1500  # SPEC d.6 / h.2: the LLM payload (compact JSON, UTF-8) never exceeds this
+MAX_SUMMARY_BYTES = 1560  # SPEC d.6 / h.2: the LLM payload (compact JSON, UTF-8) never exceeds this.
+# Raised from 1500 when market.token_live (the launch disclosure) was added: at 1500 the trim ladder paid for
+# the new field by shedding top_types entries, which are the most useful part of the payload for the model.
 
 # The 19 fixed rates_hz keys of SPEC d.6, in wire order; every value comes from tick.rates.pops.
 RATE_KEYS: tuple[str, ...] = (
@@ -412,6 +414,10 @@ def build_brain_summary(tick: dict, history: "TickHistory", reason: str, conn_me
         "market": {
             "source": _cap(mkt.get("source"), _MAX_LABEL, "sim"),
             "symbol": _cap(mkt.get("symbol"), 16, "FLY"),
+            # FLY_TOKEN_LIVE, false unless the operator explicitly said the tracked pair IS this project's token.
+            # While it is false the whole market block belongs to a third-party stand-in pair: the system prompt
+            # and the templates must not present these numbers as this project's own price.
+            "token_live": bool(mkt.get("token_live", False)),
             "price_usd": _price(mkt.get("price_usd")),
             "chg_m5": _r(mkt.get("chg_m5"), 1),
             "chg_h1": _r(mkt.get("chg_h1"), 1),

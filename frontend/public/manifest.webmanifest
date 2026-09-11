@@ -1,0 +1,15 @@
+{
+  "name": "SynapseFly ($SYNAPSE)",
+  "short_name": "SynapseFly",
+  "description": "A synthetic MaleCNS-shaped fly brain wired to the market. It paints the price and tweets its own brain state.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#008080",
+  "theme_color": "#008080",
+  "icons": [
+    { "src": "/favicon-48.png", "sizes": "48x48", "type": "image/png" },
+    { "src": "/apple-icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

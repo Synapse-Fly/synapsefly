@@ -622,7 +622,7 @@ class SimulationLoop(threading.Thread):
             "mood_states": list(MOOD_STATES),
             "channels": list(POKE_TABLE),
             "market_modes": list(MARKET_MODES),
-            "market": self.feed.hello(),
+            "market": self._hello_market(),
             "agent": agent,
             "features": {
                 "explore_baseline": float(getattr(s, "explore_baseline", 0.25)),
@@ -634,6 +634,25 @@ class SimulationLoop(threading.Thread):
                 "noise_sigma": float(getattr(s, "noise_sigma", 3.5)),
             },
         }
+
+    def _hello_market(self) -> dict:
+        """``hello.market`` (SPEC d.1) plus the launch disclosure of ``FLY_TOKEN_LIVE``.
+
+        ``self.feed.hello()`` describes the source being served; this adds the two things a client needs in
+        order to be honest about it. ``token_live`` is false unless the operator has explicitly set
+        ``FLY_TOKEN_LIVE=1`` together with the project's own pair: while it is false the numbers on the wire
+        belong to a third-party pair that is only the brain's sensory input, and no surface may present them as
+        this project's own price / market cap / liquidity. ``pair`` and ``dex`` complete the identity of that
+        pair (``chain``, ``symbol`` and ``token`` are already in the block) so the UI can name it; they are
+        ``None`` until the first snapshot lands, which is why ``token`` - the configured address - stays the
+        authoritative identity.
+        """
+        block = dict(self.feed.hello())
+        snap = getattr(self.feed, "last_snapshot", None)
+        block["token_live"] = bool(getattr(self.settings, "token_live", False))
+        block["pair"] = str(getattr(snap, "pair", "") or "") or None
+        block["dex"] = str(getattr(snap, "dex", "") or "") or None
+        return block
 
     def _hello_agent(self) -> dict:
         s = self.settings
@@ -692,7 +711,11 @@ class SimulationLoop(threading.Thread):
         }
 
     def _market_block(self, snap: MarketSnapshot | None) -> dict:
-        """``tick.market``: the snapshot plus the feed mode and the last trade of the session."""
+        """``tick.market``: the snapshot plus the feed mode, the last trade of the session and ``token_live``.
+
+        The disclosure rides on every tick, not only on ``hello``: a client that connects late, drops a hello or
+        rehydrates from ``GET /api/state`` must never render this feed as this project's own token by default.
+        """
         body: dict[str, Any]
         if snap is None:
             body = {"source": "sim", "ts": 0.0, "seq": 0, "chain": "sim", "dex": "sim", "pair": "SIM",
@@ -704,6 +727,7 @@ class SimulationLoop(threading.Thread):
             body = snap.to_wire()
         body["mode"] = self.feed.mode
         body["last_trade"] = None if self._last_trade is None else self._last_trade.to_wire()
+        body["token_live"] = bool(getattr(self.settings, "token_live", False))
         return body
 
     # ================================================================= replay

@@ -1,0 +1,270 @@
+/* Desktop shell styles: the Start menu, the taskbar buttons and the inactive title bar.
+   globals.css is another engineer's file, so everything the desktop rewrite needs lives here and is imported from
+   app/page.tsx. Same rules as the rest of the chrome: 2 px outset/inset bevels, the 16-colour palette, MS Sans Serif,
+   no rounded corners, no blurred shadows, no gradient except the classic navy title-bar one. */
+
+/* ------------------------------------------------------------------------------------ windows */
+
+/* Win95 painted the title bar of every window except the focused one flat gray. It is the only thing that tells a
+   visitor which of five overlapping windows has the keyboard.
+   Flat #808080 with black text, not a gradient: the gradient faded TOWARDS the light text (1.56:1 at its right end,
+   where most of the title actually sits), and with one focused window and four idle most of the titles on screen are
+   the unreadable ones. Black on #808080 is 5.3:1 - AA - and it is what Win95 itself drew. */
+.titlebar-idle {
+  background: #808080;
+  color: #000000;
+}
+
+/* ------------------------------------------------------------------------------------ taskbar */
+
+.start-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px 0 3px;
+  font-weight: bold;
+  flex: none;
+}
+/* The pressed Start button keeps the dotted focus rectangle Win95 drew inside its bevel. */
+.start-btn[aria-expanded="true"] {
+  border-color: #808080 #fff #fff #808080;
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* A taskbar button for an open window. The focused one is pressed in and hatched, like the real thing. */
+.task-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  min-width: 96px;
+  max-width: 168px;
+  flex: 0 1 auto;
+  text-align: left;
+  overflow: hidden;
+}
+.task-btn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-btn[aria-pressed="true"] {
+  background-color: #c0c0c0;
+  background-image: linear-gradient(45deg, #dfdfdf 25%, transparent 25%, transparent 50%, #dfdfdf 50%, #dfdfdf 75%, transparent 75%);
+  background-size: 4px 4px;
+  font-weight: bold;
+}
+/* A minimized window's button is not pressed, just plain. */
+.task-btn[data-min="true"] {
+  font-weight: normal;
+}
+
+/* ------------------------------------------------------------------------------------ Start menu */
+
+.start-menu {
+  position: fixed;
+  left: 2px;
+  z-index: 100001;
+  display: flex;
+  align-items: stretch;
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  background: #c0c0c0;
+  box-shadow: 2px 2px 0 #000;
+  padding: 3px;
+  font-size: 13px;
+}
+
+/* The vertical navy strip with the rotated product name. */
+.start-strip {
+  width: 24px;
+  flex: none;
+  background: linear-gradient(180deg, #1084d0 0%, #000080 65%, #000042 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 7px 0;
+  margin-right: 3px;
+}
+.start-strip > span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 1px;
+  line-height: 1;
+  color: #c0c0c0;
+  white-space: nowrap;
+  user-select: none;
+}
+.start-strip > span > b {
+  color: #fff;
+  font-weight: bold;
+}
+
+.start-items {
+  display: flex;
+  flex-direction: column;
+  min-width: 182px;
+}
+
+.start-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 22px 5px 5px;
+  border: 0;
+  background: transparent;
+  color: #000;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+.start-row:hover,
+.start-row[data-active="true"] {
+  background: #000080;
+  color: #fff;
+}
+.start-row:focus-visible {
+  outline: 1px dotted currentColor;
+  outline-offset: -3px;
+}
+.start-row > .start-label {
+  flex: 1 1 auto;
+}
+.start-row > .start-arrow {
+  position: absolute;
+  right: 5px;
+  font-size: 10px;
+  line-height: 1;
+}
+.start-sep {
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #fff;
+  margin: 3px 2px;
+}
+
+/* Flyout submenu: sits on the row, opening to the right, and never off the top of the screen. */
+.start-sub {
+  position: absolute;
+  left: 100%;
+  bottom: -3px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 186px;
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  background: #c0c0c0;
+  box-shadow: 2px 2px 0 #000;
+  padding: 3px;
+}
+
+/* A phone is narrower than the menu plus its flyout (219 + 186 px), so there the flyout opens OVER the menu
+   instead of beside it - it still hangs off the same row, and nothing lands off the screen edge. */
+@media (max-width: 520px) {
+  .start-sub {
+    left: 28px;
+  }
+}
+
+/* ------------------------------------------------------------------------------------ desktop icons */
+
+/* The icon column owns the left strip of the desktop; page.tsx keeps the tiling out of it. Clicks on bare teal
+   inside the strip must still reach the desktop (DesktopIcons clears its selection on them).
+   FIXED, not absolute: the desktop scrolls when a window is dragged past its edge, and icons that scrolled away with
+   it took the whole point of the redesign off-screen. A real Win95 desktop does not scroll; its icons stay put.
+   z-index 5 keeps them below the windows (10+), exactly as before. */
+.icon-gutter {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 5;
+}
+
+/* A top-level Start row plus its flyout. The wrapper is the positioning context (a submenu may not be nested
+   INSIDE the row's <button> - buttons and anchors cannot contain interactive children). */
+.start-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------- Tile button (taskbar, next to Start)
+
+   The cascade a visitor gets from opening five apps one by one is authentic, and key "G" / View > Tile windows fixes
+   it instantly - but nothing on screen said so, so four windows sat ~80 % buried with no visible way out. This is
+   that affordance: the same command, one bevelled button away, permanently on the taskbar. It does NOT auto-tile;
+   the windows only move when the visitor asks. */
+.tile-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px 0 5px;
+  flex: none;
+}
+/* A stacked (phone) desktop has no tiling to do - every open window is already one full-width row of a single
+   scrolling column - so the button would be a lie, and it would cost the window strip 56 px it cannot spare. */
+@media (max-width: 1023px) {
+  .tile-btn {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------- narrow taskbar: icon-only window buttons
+
+   A 390 px phone leaves the window strip ~124 px, and a 96 px minimum meant ONE of five open windows was on screen;
+   the other four were only reachable by a horizontal scroll nothing hinted at. Below the tray's label breakpoint the
+   buttons drop to their 16 px icon (the title stays as the button's accessible name and tooltip), so four fit at
+   once and the strip still scrolls - with its scrollbar hidden, a 30 px taskbar has no room for one - to reach the
+   rest. Start, the connection LED and the clock are flex: none / shrink-0 and never move. */
+@media (max-width: 767px) {
+  .task-btn {
+    min-width: 0;
+    max-width: none;
+    width: 30px;
+    flex: none;
+    justify-content: center;
+    gap: 0;
+    padding: 0 5px;
+  }
+  .task-btn > span {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------------------- Win95 scrollbar
+
+   A scrolling panel that shows no scrollbar reads as a clipped layout, not as "there is more below" - which is
+   exactly how the first-visit explainer read on a phone. Flat #dfdfdf track, bevelled #c0c0c0 thumb, square corners:
+   the Win95 scrollbar minus its arrow buttons (which cannot be drawn with ::-webkit-scrollbar-button alone).
+   globals.css sets `scrollbar-width: thin` on everything; this opts back in to the full-width one. */
+.win95-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: #c0c0c0 #dfdfdf;
+}
+.win95-scroll::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+.win95-scroll::-webkit-scrollbar-track {
+  background: #dfdfdf;
+  border-left: 1px solid #808080;
+}
+.win95-scroll::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  border-radius: 0;
+}
+.win95-scroll::-webkit-scrollbar-button,
+.win95-scroll::-webkit-scrollbar-corner {
+  display: none;
+}

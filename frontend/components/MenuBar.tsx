@@ -7,11 +7,15 @@ import type { FlySocket } from "@/lib/ws";
 import type { HelloMsg, MarketMode, PokeStim, TickMsg } from "@/lib/types";
 import { useTickSnapshot, type TickStore } from "@/lib/store";
 import { MessageBox } from "./Win95Window";
-import { X_URL, GITHUB_URL } from "@/lib/brand";
+import { XGlyph } from "./ShareDialog";
+import { X_URL, X_HANDLE, GITHUB_URL } from "@/lib/brand";
+const SITE_URL = "https://www.synapsefly.com";
 
 export type MenuAction =
   | { kind: "clear" }
   | { kind: "save" }
+  // Opens the Share to X dialog. PaintWindow intercepts it (it owns the canvas handle); page.tsx never sees it.
+  | { kind: "share" }
   | { kind: "poke"; stim: PokeStim }
   | { kind: "market"; mode: MarketMode }
   | { kind: "tweet_test" }
@@ -69,6 +73,7 @@ function buildMenus(flags: Partial<MenuFlags>, hello: HelloMsg | null): Menu[] {
         { label: "Open...", shortcut: "Ctrl+O", inert: true },
         { label: "Save", shortcut: "Ctrl+S", inert: true },
         { label: "Save As...", action: { kind: "save" } },
+        { label: "Share to X...", action: { kind: "share" } },
         { sep: true, label: "" },
         { label: "Print Preview", inert: true },
         { label: "Page Setup...", inert: true },
@@ -103,10 +108,11 @@ function buildMenus(flags: Partial<MenuFlags>, hello: HelloMsg | null): Menu[] {
         { sep: true, label: "" },
         { label: "Raster labels", action: { kind: "toggle", what: "labels" }, checked: flags.labels ?? true },
         { label: "Freeze raster", shortcut: "F", action: { kind: "toggle", what: "freeze" }, checked: flags.frozen ?? false },
-        { label: "Zoom 1.5x", action: { kind: "toggle", what: "zoom" }, checked: flags.zoom ?? false },
+        { label: "Zoom canvas 1.5x", action: { kind: "toggle", what: "zoom" }, checked: flags.zoom ?? false },
         { label: "Show FPS", action: { kind: "toggle", what: "fps" }, checked: flags.fps ?? false },
         { sep: true, label: "" },
-        { label: "Reset window layout", action: { kind: "reset_layout" } },
+        // Clears the stored window positions and re-applies the computed tiling (lib/layout.ts).
+        { label: "Tile windows (fit screen)", shortcut: "G", action: { kind: "reset_layout" } },
       ],
     },
     {
@@ -152,7 +158,7 @@ function buildMenus(flags: Partial<MenuFlags>, hello: HelloMsg | null): Menu[] {
       items: [
         { label: "What is this?", shortcut: "?", action: { kind: "about" } },
         { sep: true, label: "" },
-        { label: "SynapseFly.com", action: { kind: "link", url: "https://www.synapsefly.com" } },
+        { label: "SynapseFly.com", action: { kind: "link", url: SITE_URL } },
         { label: "X (@SynapseFly)", action: { kind: "link", url: X_URL } },
         { label: "GitHub (source)", action: { kind: "link", url: GITHUB_URL } },
         { sep: true, label: "" },
@@ -233,8 +239,10 @@ export default function MenuBar({ sock, onAction, flags = {} }: MenuBarProps) {
       data-menu-open={open !== null ? "true" : undefined}
       role="menubar"
     >
+      {/* Under 420 px of viewport the row has no room for both this and the Share button; the button wins (the icon
+          is decoration, the button is the one thing a visitor wants to do with the painting). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/favicon-48.png" alt="SynapseFly" width={18} height={18} className="ml-[2px] mr-[3px]" style={{ imageRendering: "pixelated" }} />
+      <img src="/favicon-48.png" alt="SynapseFly" width={18} height={18} className="ml-[2px] mr-[3px] hidden min-[420px]:block" style={{ imageRendering: "pixelated" }} />
       {menus.map((m, i) => (
         <div key={m.label} className="relative">
           <div
@@ -251,6 +259,25 @@ export default function MenuBar({ sock, onAction, flags = {} }: MenuBarProps) {
           {open === i ? <div className="absolute left-0 top-full z-[1000]">{renderRows(m.items, 0)}</div> : null}
         </div>
       ))}
+      {/* The one thing a first-time visitor wants to do with the painting, one click from the canvas. Same action as
+          File > Share to X...; PaintWindow catches it and opens ShareDialog.
+
+          This row cannot scroll or wrap (it is 24 px of Win95 chrome and an open dropdown must be allowed to hang
+          out of it), so the button has to FIT instead of overflowing the window frame. Measured against the six
+          menu titles, which are ~323 px wide with the icon and ~300 px without it:
+            >= 420 px  icon + "X Share"        (the six titles + 68 px still fit)
+            360-419    no icon, glyph only     (300 + 29 px fits a 340 px row)
+            < 360      no button at all        - File > Share to X... is the way in, and nothing sticks out. */}
+      <button
+        type="button"
+        className="btn95 ml-auto mr-[2px] hidden h-[18px] shrink-0 items-center gap-1 text-[11px] min-[360px]:flex"
+        onClick={() => { close(); onAction({ kind: "share" }); }}
+        title={`Share this painting on X (${X_HANDLE}) - saves the PNG, opens a pre-filled composer`}
+        aria-label="Share this painting on X"
+        data-testid="share-button"
+      >
+        <XGlyph /> <span className="hidden min-[420px]:inline">Share</span>
+      </button>
     </div>
   );
 }
@@ -283,6 +310,15 @@ export function AboutDialog({ hello, store, onClose }: AboutDialogProps) {
       icon={<PaintIcon size={32} />}>
       <div className="mb-2 font-bold">SynapseFly / FlyBrain ($SYNAPSE)</div>
       <div className="mb-2">A spiking Drosophila male CNS shaped brain (MaleCNS v1.0 shape) wired to a token market, painting in a Win95 Paint window.</div>
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+        <a className="text-win-blue" href={SITE_URL} target="_blank" rel="noopener noreferrer">synapsefly.com</a>
+        <a className="text-win-blue" href={X_URL} target="_blank" rel="noopener noreferrer">X {X_HANDLE}</a>
+        <a className="text-win-blue" href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub (source)</a>
+      </div>
+      <div className="mb-2 text-[11px] text-win-dark">
+        Tip: drag a title bar to move a window; press <b>G</b> (View &gt; Tile windows) to refit every window to the screen.
+        The X and GitHub links also live in the taskbar tray, next to the clock.
+      </div>
       <table className="w-full border-collapse text-[11px]">
         <tbody>
           {rows.map(([k, v]) => (

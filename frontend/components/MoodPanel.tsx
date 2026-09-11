@@ -394,7 +394,7 @@ export function MoodPanel({ sock }: MoodPanelProps) {
       <div className="mt-auto border-t border-[#808080] pt-[2px] text-[10px] text-[#404040]" data-testid="mood-footer">
         {hello ? (
           <>
-            run {hello.run_id} · {hello.connectome.name} ({hello.connectome.source}) · {hello.connectome.n.toLocaleString()} n / {hello.connectome.e.toLocaleString()} e
+            run {hello.run_id} · {hello.connectome.name} ({hello.connectome.source}) · {hello.connectome.n.toLocaleString("en-US")} n / {hello.connectome.e.toLocaleString("en-US")} e
             · gain {hello.connectome.gain} · dt {hello.dt_ms} ms · {tick?.sim.backend ?? hello.backend}
             {tick ? ` · rtf ${tick.sim.rtf.toFixed(2)} · speed ${tick.sim.speed.toFixed(2)}x` : ""}
             {hello.connectome.source === "synthetic" ? <b> · synthetic stand-in</b> : null}

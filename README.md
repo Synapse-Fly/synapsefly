@@ -111,8 +111,15 @@ Production topology and a step-by-step deploy (frontend on Vercel, backend on a 
 
 The neuroscience is built on Janelia FlyEM's **MaleCNS v1.0** connectome (~166k neurons, ~125M
 synapses), released **CC-BY 4.0**. See [`docs/NOTICE.md`](docs/NOTICE.md) for citations and DOIs.
-Project code is released for people to inspect and understand how the system works — this repository
-is the proof that the fly on the screen is driven by a real neural architecture, not a puppet.
+
+**Code:** MIT (see [`LICENSE`](LICENSE)). **Data:** no connectome data is redistributed here; Janelia
+FlyEM MaleCNS v1.0 is CC-BY 4.0 and FlyWire/Codex is CC-BY-NC 4.0 — see
+[`docs/NOTICE.md`](docs/NOTICE.md).
+
+And because "driven by a real neural architecture" is a claim, not a vibe: every engineered nudge that
+makes the fly move — exploration drive, wander noise, mood feedback, the giant-fiber rest brake — is
+named, located in the code and given an off switch in
+[`docs/PUPPETEERING.md`](docs/PUPPETEERING.md). A test fails if that list drifts from the generator.
 
 ---
 

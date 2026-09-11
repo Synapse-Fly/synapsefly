@@ -166,13 +166,23 @@ class RasterBlock(_Server):
 
 
 class HelloMarket(_Server):
-    """``hello.market``: the configured source, not a snapshot."""
+    """``hello.market``: the configured source, not a snapshot.
+
+    ``token_live`` (``FLY_TOKEN_LIVE``) is the launch disclosure and defaults to **false** in both directions:
+    a backend that predates the field omits it, and a client then reads the safe value - the tracked pair is a
+    third-party stand-in used only as sensory input and this project's own token has not launched. ``chain`` /
+    ``symbol`` / ``token`` plus ``pair`` / ``dex`` are the identity of the pair actually being tracked, so a UI
+    showing the numbers can name whose pair they are instead of implying they are this project's.
+    """
 
     mode: str
     chain: str
     symbol: str
     token: str
     poll_s: float
+    token_live: bool = False
+    pair: str | None = None
+    dex: str | None = None
 
 
 class HelloAgent(_Server):
@@ -328,10 +338,16 @@ class MarketSnapshot(_Server):
 
 
 class TickMarket(MarketSnapshot):
-    """``tick.market``: a snapshot plus the feed ``mode`` and the last trade seen this session."""
+    """``tick.market``: a snapshot plus the feed ``mode``, the last trade seen this session and the disclosure.
+
+    ``token_live`` repeats ``hello.market.token_live`` on every tick so a client that connects late, misses the
+    hello or reconnects still knows whether these numbers belong to this project's token. It defaults to false,
+    so a backend that does not send it is read as "not live" (SPEC d.1 / d.2, fail safe).
+    """
 
     mode: _MarketSource
     last_trade: Trade | None = None
+    token_live: bool = False
 
 
 class Drives(_Server):
@@ -630,12 +646,14 @@ class HealthConnectome(_Server):
 
 
 class HealthMarket(_Server):
-    """``GET /api/health.market``."""
+    """``GET /api/health.market`` (``token_live`` defaults to false: an operator curling an old backend must not
+    read silence as "the token is live")."""
 
     mode: str
     ok: bool
     last_poll: float | None = None
     failures: int = 0
+    token_live: bool = False
 
 
 class HealthAgent(_Server):

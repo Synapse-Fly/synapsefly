@@ -25,7 +25,9 @@ export interface HelloMsg {
   mood_states: Mood[];
   channels: PokeStim[];
   market_modes: MarketMode[];
-  market: { mode: "sim"|"dexscreener"|"sim(fallback)"; chain: string; symbol: string; token: string; poll_s: number };
+  // `token_live` is false (or absent, on an older backend) while $SYNAPSE has not launched: the tracked pair is then
+  // a simulator or somebody else's token, and the UI must say so. lib/brand.ts `tokenLive()` reads it fail-safe.
+  market: { mode: "sim"|"dexscreener"|"sim(fallback)"; chain: string; symbol: string; token: string; poll_s: number; token_live?: boolean };
   agent: { llm: "dryrun"|"anthropic"; x: "dryrun"|"post"; cooldown_s: number; reason_cooldown_s: number; tweets_per_day: number; lang: "en"|"tr" };
   features: { explore_baseline: number; wander_sigma: number; mood_feedback: boolean; easter_eggs: boolean;
               drive_mode: "poisson"|"current"; noise_mu: number; noise_sigma: number };
@@ -43,7 +45,9 @@ export interface MarketSnapshot { source: "sim"|"dexscreener"|"sim(fallback)"; t
   pair: string; symbol: string; price_usd: number|null; price_native: number|null; buys_m5: number; sells_m5: number;
   buys_h1: number; sells_h1: number; chg_m5: number; chg_h1: number; chg_h6: number; chg_h24: number; vol_m5: number; vol_h1: number;
   liq_usd: number|null; fdv: number|null; mcap: number|null; regime: string|null }
-export interface TickMarket extends MarketSnapshot { mode: "sim"|"dexscreener"|"sim(fallback)"; last_trade: Trade|null }
+// `token_live`: true only once the real $SYNAPSE pair is the one being polled. Optional on the wire so a backend that
+// predates the flag still parses - and absent MUST be read as false (lib/brand.ts `tokenLive()`), never as "live".
+export interface TickMarket extends MarketSnapshot { mode: "sim"|"dexscreener"|"sim(fallback)"; last_trade: Trade|null; token_live?: boolean }
 export interface Drives { sugar: number; bitter: number; water: number; looming: number; loom_side: -1|0|1; flash: number; odor: number;
   chop: number; courtship: number; sleep_pressure: number; explore: number; up: number; down: number; activity: number;
   hunger: number; candle: Candle; any_max: number }

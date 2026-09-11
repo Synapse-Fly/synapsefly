@@ -1,7 +1,9 @@
-# SynapseFly full stack (backend brain + frontend page), all on your VPS.
-# Both containers join the EXISTING Caddy network (crypto-automation_social-engine-net)
-# so `social-engine-proxy` (caddy) reverse-proxies to them by name. Neither publishes a
-# host port, so nothing on 80/443/3000/4000 of the host is touched.
+# SynapseFly on your VPS. The production topology is **backend here, frontend on Vercel**
+# (deploy/DEPLOY.md), so `docker compose up -d` starts the backend only - the `frontend`
+# service sits behind the `selfhost` profile and is opt-in.
+# Containers join an EXISTING Caddy network (set it under `networks:` at the bottom) so
+# that Caddy reverse-proxies to them by name. Neither publishes a host port, so nothing
+# on 80/443/3000/4000 of the host is touched.
 
 services:
   backend:
@@ -23,7 +25,11 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  # Optional self-host alternative to Vercel. DEPLOY.md step 2 only copies `backend deploy`, so this build
+  # context does not exist on the VPS unless you also `scp -r frontend` - hence the profile: without
+  # `--profile selfhost` compose never looks at it, and `docker compose build` cannot fail on it.
   frontend:
+    profiles: ["selfhost"]
     build:
       context: ..
       dockerfile: frontend/Dockerfile
@@ -44,6 +50,8 @@ services:
 networks:
   caddy_net:
     external: true
+    # The network your Caddy container is already on (`docker network ls`). This is the one value in this
+    # file that is specific to the host it runs on.
     name: crypto-automation_social-engine-net
 
 volumes:

@@ -2,11 +2,19 @@
 // SPEC section e.5 `SpikeRaster`: wraps lib/raster.ts `RasterPainter`. The rAF loop calls painter.frame(now) every
 // frame and painter.push(tick) for every new tick read from the mutable store (no React state per tick); the header
 // line re-renders at 4 Hz through useTickSnapshot; the hover tooltip comes from painter.rowAt(y).
+//
+// The canvas carries NO width/height attributes: the painter owns the bitmap and sizes it to this pane (measured with
+// a ResizeObserver, DPR 1 so css px == device px). That is what removed the ~95 px white strip under the raster in a
+// three-column layout - the bitmap used to be a fixed 8*(per_region+12) px tall regardless of the window. It still
+// never goes BELOW that natural height (one device row per sampled neuron), so the pane stays `overflow-auto`: a short
+// window scrolls the raster instead of squashing 6-8 neurons of a lane onto one row. The pane is painted black because
+// `.bevel-in` is plain CSS (background:#fff) and beats Tailwind's layered `bg-black` utility: any pixel the canvas
+// does not cover would flash white.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FlySocket } from "@/lib/ws";
 import type { RasterRow } from "@/lib/types";
 import { useTickSnapshot } from "@/lib/store";
-import { LANE_COLORS, LANE_TITLES, RASTER_MIN_W, RasterPainter, rasterHeight } from "@/lib/raster";
+import { LANE_COLORS, LANE_TITLES, RasterPainter } from "@/lib/raster";
 
 export interface SpikeRasterProps { sock: FlySocket; frozen: boolean; labels: boolean }
 
@@ -22,6 +30,15 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
   const painterRef = useRef<RasterPainter | null>(null);
   const flagsRef = useRef({ frozen, labels });
   const [hover, setHover] = useState<Hover | null>(null);
+  // Row density of the current bitmap, for the header readout. `pitch` is the painter's WORST lane (minRowPitch) and
+  // `dense` its own flag, so the disclosure follows the lane that actually shares device rows - lane 0 can sit at
+  // exactly 1.00 px while a rounding-shorter lane is below it.
+  const [density, setDensity] = useState<{ pitch: number; dense: boolean }>({ pitch: 1, dense: false });
+
+  // Same numbers => keep the previous object so React bails out instead of re-rendering on every resize tick.
+  const readDensity = useCallback((p: RasterPainter) => {
+    setDensity((d) => (d.pitch === p.minRowPitch && d.dense === p.dense ? d : { pitch: p.minRowPitch, dense: p.dense }));
+  }, []);
 
   // Keep the painter flags in sync with the props (also applied when the painter is (re)created).
   useEffect(() => {
@@ -44,6 +61,7 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
     painterRef.current = painter;
     painter.setFrozen(flagsRef.current.frozen);
     painter.setLabels(flagsRef.current.labels);
+    readDensity(painter);
 
     let raf = 0;
     let lastSeq = -1;
@@ -68,10 +86,16 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
     };
     raf = requestAnimationFrame(loop);
 
+    // The pane drives the bitmap: every window resize / drag re-tiles the 8 lanes to fill it (down to 1 px per row).
     const host = canvas.parentElement ?? canvas;
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => { try { painter.resize(); } catch (e) { console.error("[raster] resize failed", e); } });
+      ro = new ResizeObserver(() => {
+        try {
+          painter.resize();
+          readDensity(painter);
+        } catch (e) { console.error("[raster] resize failed", e); }
+      });
       ro.observe(host);
     }
     return () => {
@@ -79,7 +103,7 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
       if (ro) ro.disconnect();
       if (painterRef.current === painter) painterRef.current = null;
     };
-  }, [hello, store]);
+  }, [hello, store, readDensity]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -93,14 +117,15 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
     setHover((h) => {
       if (!row) return h === null ? h : null;
       if (h && h.row.slot === row.slot) return h;
-      const rowY = (painter.laneRow0(row.region) + (row.slot % painter.per)) / scaleY;
-      return { row, cssY: rowY };
+      const top = painter.slotTop(row.slot);
+      return { row, cssY: (top < 0 ? y : top) / scaleY };
     });
   }, []);
 
   const onPointerLeave = useCallback(() => setHover(null), []);
 
   const per = hello?.raster.per_region ?? DEFAULT_PER;
+  const { pitch, dense } = density;
   const spikesPerS = tick && tick.spikes.win_ms > 0 ? tick.spikes.total / (tick.spikes.win_ms / 1000) : null;
   const activePct = tick ? tick.sim.active_frac * 100 : null;
 
@@ -111,9 +136,28 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
         <span>&middot;</span>
         <span>active {activePct === null ? "-" : activePct.toFixed(2)}%</span>
         <span>&middot;</span>
-        <span className="text-[#404040]" title="sampled rows: 8 lanes x per_region (FLY_RASTER_PER_REGION); the canvas keeps every row and the window scrolls">
+        <span
+          className="text-[#404040]"
+          title={
+            "sampled rows: 8 lanes x per_region (FLY_RASTER_PER_REGION); the raster fills the window down to one " +
+            `screen row per neuron and no further (now ${pitch.toFixed(2)} px per row) - a window shorter than that ` +
+            "scrolls instead of stacking neurons on one row"
+          }
+        >
           rows 8&times;{per}
         </span>
+        {dense ? (
+          <span
+            className="text-[#404040]"
+            title={
+              "the sample is taller than the largest bitmap we allocate: about " + Math.round(1 / pitch) +
+              " neighbouring neurons of a lane share one screen row (no neuron and no spike is dropped) - " +
+              "lower FLY_RASTER_PER_REGION to give each its own row"
+            }
+          >
+            @{pitch.toFixed(2)}px/row
+          </span>
+        ) : null}
         {tick?.spikes.capped ? (
           <span className="bg-[#ff4136] px-1 text-[9px] font-bold text-white" title="raster sample capped (uniformly subsampled)">
             &#9660; cap
@@ -124,11 +168,12 @@ export function SpikeRaster({ sock, frozen, labels }: SpikeRasterProps) {
           {frozen ? " | FROZEN" : ""}
         </span>
       </div>
-      <div className="bevel-in relative min-h-0 flex-1 overflow-auto bg-black p-0">
+      {/* overflow-x is HIDDEN, not auto: the bitmap is one ResizeObserver tick behind the pane's width whenever the
+          vertical scrollbar appears, and a transient horizontal scrollbar would eat 13 px of height and re-trigger the
+          observer. The painter always resizes back to clientWidth, so nothing stays clipped. */}
+      <div className="bevel-in relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-0" style={{ background: "#000000" }}>
         <canvas
           ref={canvasRef}
-          width={RASTER_MIN_W}
-          height={rasterHeight(per)}
           className="block"
           style={{ imageRendering: "pixelated" }}
           onPointerMove={onPointerMove}

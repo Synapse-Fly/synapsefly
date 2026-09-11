@@ -82,10 +82,10 @@ SynapseFly / FlyBrain (`flybrain` 0.1.0). This file is tracked; everything under
   (10.7554/eLife.71679); Shiu 2022 (10.7554/eLife.79887); Engert 2022 (10.7554/eLife.78110); von Philipsborn 2011
   (10.1016/j.neuron.2011.01.011); Hampel 2015 (10.7554/eLife.08758); Donlea 2014 (10.1016/j.neuron.2013.12.013).
 * Every biological number in the code carries a provenance tag in its docstring: `[V]` verified against the dataset or
-  by simulation, `[L]` literature, `[E]` engineered (puppeteering / stand-in). The `[E]` items are listed in the README
-  (section 8) so that fidelity claims can be audited; the engineered projection rows of the synthetic generator can be
-  re-derived from the code itself with the one-liner printed there (`PROJECTIONS` filtered on `provenance == "E"`), and
-  `backend/tests/test_docs_e8.py` fails if the README list and the generator disagree.
+  by simulation, `[L]` literature, `[E]` engineered (puppeteering / stand-in). The `[E]` items are listed in
+  [`docs/PUPPETEERING.md`](PUPPETEERING.md) so that fidelity claims can be audited; the engineered projection rows of
+  the synthetic generator can be re-derived from the code itself with the one-liner printed there (`PROJECTIONS`
+  filtered on `provenance == "E"`), and `backend/tests/test_docs_e8.py` fails if that list and the generator disagree.
 
 ## 4. Third-party services (optional, off by default)
 
@@ -97,7 +97,15 @@ SynapseFly / FlyBrain (`flybrain` 0.1.0). This file is tracked; everything under
 * **X (Twitter) API** (`FLY_X=post`, tweepy) — posts are made from the user's own account and are the user's
   responsibility. The system prompt forbids financial advice, promises of returns and URLs.
 
-## 5. Software licences of dependencies
+## 5. Licences
+
+**This project's own code:** MIT — see [`LICENSE`](../LICENSE) at the repo root.
+
+**Data:** no connectome data is redistributed here (section 1). Janelia FlyEM MaleCNS v1.0 is **CC-BY 4.0** and
+FlyWire / Codex is **CC-BY-NC 4.0**; whoever downloads either dataset carries its licence and attribution duties
+(sections 2.1 and 2.2).
+
+### 5.1 Software licences of dependencies
 
 numpy (BSD-3), fastapi (MIT), uvicorn (BSD-3), websockets (BSD-3), pydantic (MIT), httpx (BSD-3); optional: torch
 (BSD-3), anthropic (MIT), tweepy (MIT), pyarrow (Apache-2.0), pandas (BSD-3), neuprint-python (BSD-3); frontend: next
