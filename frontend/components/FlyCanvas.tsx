@@ -137,7 +137,7 @@ export default function FlyCanvas({ sock, onFps, flip, pokeStim = "sugar", ref }
     // the price - the symbol stands in for it).
     ctx.fillText(`FlyBrain | ${mood} | ${sym} ${price} ${chg} | t=${secs}s`, 6, h + CAPTION_H / 2 + 1);
     return c;
-  }, [store, hello, W, H]);
+  }, [store, W, H]);
 
   useImperativeHandle(ref, () => ({ clear, composite, dirty: () => dirtyRef.current }), [clear, composite]);
 
