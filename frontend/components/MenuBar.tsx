@@ -7,6 +7,7 @@ import type { FlySocket } from "@/lib/ws";
 import type { HelloMsg, MarketMode, PokeStim, TickMsg } from "@/lib/types";
 import { useTickSnapshot, type TickStore } from "@/lib/store";
 import { MessageBox } from "./Win95Window";
+import { X_URL, GITHUB_URL } from "@/lib/brand";
 
 export type MenuAction =
   | { kind: "clear" }
@@ -16,6 +17,7 @@ export type MenuAction =
   | { kind: "tweet_test" }
   | { kind: "toggle"; what: "labels" | "freeze" | "zoom" | "fps" | "flip" }
   | { kind: "about" }
+  | { kind: "link"; url: string }
   | { kind: "exit" };
 
 export interface MenuFlags { labels: boolean; frozen: boolean; zoom: boolean; fps: boolean; flip: boolean }
@@ -145,9 +147,13 @@ function buildMenus(flags: Partial<MenuFlags>, hello: HelloMsg | null): Menu[] {
     {
       label: "Help",
       items: [
-        { label: "Help Topics", inert: true },
+        { label: "What is this?", shortcut: "?", action: { kind: "about" } },
         { sep: true, label: "" },
-        { label: "About FlyBrain", shortcut: "?", action: { kind: "about" } },
+        { label: "SynapseFly.com", action: { kind: "link", url: "https://www.synapsefly.com" } },
+        { label: "X (@SynapseFly)", action: { kind: "link", url: X_URL } },
+        { label: "GitHub (source)", action: { kind: "link", url: GITHUB_URL } },
+        { sep: true, label: "" },
+        { label: "About FlyBrain", action: { kind: "about" } },
       ],
     },
   ];

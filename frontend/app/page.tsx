@@ -16,6 +16,7 @@ import MoodPanel from "@/components/MoodPanel";
 import MarketTicker from "@/components/MarketTicker";
 import TweetNotepad from "@/components/TweetNotepad";
 import IntroModal from "@/components/IntroModal";
+import BrainView3D from "@/components/BrainView3D";
 
 type Dialog = null | { kind: "about" } | { kind: "confirm_clear"; run_id: string };
 
@@ -26,6 +27,7 @@ const WINDOWS = [
   { id: "paint", label: "untitled - Paint" },
   { id: "raster", label: "Oscilloscope" },
   { id: "status", label: "Fly Status" },
+  { id: "brain", label: "Fly Brain (3D)" },
   { id: "tweets", label: "tweets.txt - Notepad" },
 ];
 
@@ -74,6 +76,16 @@ function NotepadIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden>
       <rect x="3" y="1" width="10" height="14" fill="#fff" stroke="#000" />
       <rect x="5" y="4" width="6" height="1" fill="#000" /><rect x="5" y="7" width="6" height="1" fill="#000" /><rect x="5" y="10" width="4" height="1" fill="#000" />
+    </svg>
+  );
+}
+
+function BrainIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+      <rect x="1" y="2" width="14" height="12" fill="#05070a" stroke="#c0c0c0" />
+      <circle cx="5" cy="6" r="1.6" fill="#22d3ee" /><circle cx="10" cy="6" r="1.6" fill="#eab308" />
+      <circle cx="7.5" cy="9.5" r="1.6" fill="#22c55e" /><circle cx="11" cy="10.5" r="1.2" fill="#ef4444" />
     </svg>
   );
 }
@@ -140,6 +152,9 @@ export default function Home() {
           break;
         case "about":
           setDialog({ kind: "about" });
+          break;
+        case "link":
+          window.open(a.url, "_blank", "noopener,noreferrer");
           break;
         case "exit":
           shakeWindow("paint");
@@ -216,6 +231,9 @@ export default function Home() {
             <div className="min-h-0 overflow-auto"><MoodPanel sock={sock} /></div>
             <div className="min-h-0 overflow-auto"><MarketTicker sock={sock} /></div>
           </div>
+        </Win95Window>
+        <Win95Window id="brain" title="Fly Brain (3D) - live connectome" icon={<BrainIcon />} initial={{ x: 1480, y: 16, w: 440, h: 620 }}>
+          <BrainView3D sock={sock} />
         </Win95Window>
         <Win95Window id="tweets" title="tweets.txt - Notepad" icon={<NotepadIcon />} initial={{ x: 16, y: 712, w: 880, h: 180 }} collapsible>
           <TweetNotepad sock={sock} onTest={() => dispatch({ kind: "tweet_test" })} />
