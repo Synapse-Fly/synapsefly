@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/* SPEC section e.0 / e.7: Win95 palette as Tailwind v4 theme tokens (no tailwind.config). Light look only: the Paint
+   chrome ignores prefers-color-scheme. */
+@theme {
+  --color-win-gray: #c0c0c0;
+  --color-win-dark: #808080;
+  --color-win-light: #dfdfdf;
+  --color-win-blue: #000080;
+  --color-win-blue2: #1084d0;
+  --color-win-teal: #008080;
+  --color-paint-white: #ffffff;
+  --font-sans: "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Arial, system-ui, sans-serif;
+  --font-mono: "Lucida Console", Consolas, "Courier New", monospace;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  font: 12px "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Arial, system-ui, sans-serif;
+  margin: 0;
+  background: #008080;
+  color: #000000;
+  -webkit-font-smoothing: none;
+}
+
+/* The four plain CSS utility classes of section e.7 (used verbatim in className strings). */
+.bevel-out {
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  background: #c0c0c0;
+}
+.bevel-in {
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+  background: #fff;
+}
+.titlebar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-weight: bold;
+  padding: 2px 4px;
+  user-select: none;
+}
+.btn95 {
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  background: #c0c0c0;
+  padding: 0 6px;
+  color: #000;
+  font: inherit;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+}
+.btn95:active,
+.btn95[aria-pressed="true"] {
+  border-color: #808080 #fff #fff #808080;
+}
+.btn95:disabled {
+  color: #808080;
+  text-shadow: 1px 1px 0 #fff;
+}
+.btn95:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+canvas {
+  image-rendering: pixelated;
+}
+
+/* Win95 window shake (section e.5: the close glyph without onClose shakes the window 3 x 4 px). */
+@keyframes win-shake {
+  0% { transform: translateX(0); }
+  16% { transform: translateX(-4px); }
+  33% { transform: translateX(4px); }
+  50% { transform: translateX(-4px); }
+  66% { transform: translateX(4px); }
+  83% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+.win-shake {
+  animation: win-shake 0.3s linear;
+}
+
+/* Menu bar / dropdown look (MenuBar.tsx). */
+.menu-item {
+  padding: 1px 6px;
+  user-select: none;
+  cursor: default;
+}
+.menu-item[data-open="true"],
+.menu-item:hover {
+  background: #000080;
+  color: #fff;
+}
+.menu-drop {
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  background: #c0c0c0;
+  box-shadow: 1px 1px 0 #000;
+  padding: 2px;
+  min-width: 160px;
+}
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 18px 2px 20px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+  position: relative;
+}
+.menu-row:hover,
+.menu-row[data-active="true"] {
+  background: #000080;
+  color: #fff;
+}
+.menu-row[aria-disabled="true"] {
+  color: #808080;
+  text-shadow: 1px 1px 0 #fff;
+}
+.menu-row[aria-disabled="true"]:hover {
+  background: #000080;
+  text-shadow: none;
+}
+.menu-sep {
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #fff;
+  margin: 2px 1px;
+}
+.menu-check {
+  position: absolute;
+  left: 6px;
+  top: 2px;
+}
+.menu-arrow {
+  position: absolute;
+  right: 6px;
+  top: 2px;
+}
+
+/* Paint tool flash (a poke tool pressed by this or another client). */
+.tool-flash {
+  background: #ffff80 !important;
+}
+
+/* Win95 scrollbars for the stacked layout / notepad. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #808080 #dfdfdf;
+}

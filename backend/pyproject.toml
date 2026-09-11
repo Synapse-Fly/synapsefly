@@ -1,0 +1,41 @@
+# SPEC section a: [project] name="flybrain", version="0.1.0", requires-python=">=3.12";
+# packages=["flybrain"]; [tool.pytest.ini_options] testpaths=["tests"].
+# The import root is backend/ (run "py -3 -m pytest -q tests/<file>" from this directory).
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flybrain"
+version = "0.1.0"
+description = "SynapseFly / FlyBrain: MaleCNS-shaped spiking fly brain driven by a token market"
+requires-python = ">=3.12"
+readme = "../README.md"
+dependencies = [
+    "numpy==2.4.3",
+    "fastapi==0.135.2",
+    "uvicorn==0.42.0",
+    "websockets==16.0",
+    "pydantic==2.12.5",
+    "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+torch = ["torch==2.11.0"]
+llm = ["anthropic==0.86.0"]
+x = ["tweepy==4.17.0"]
+prepare = ["pyarrow==25.0.1", "pandas==3.0.5", "neuprint-python==0.6.3"]
+dev = ["pytest==9.1.1", "pytest-asyncio==1.4.0"]
+
+[tool.setuptools.packages.find]
+# packages=["flybrain"] per SPEC section a; "find" with the wildcard also picks up the sub-packages
+# (connectome, snn, market, agent, server) which a bare explicit list would silently omit.
+where = ["."]
+include = ["flybrain*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# pytest-asyncio 1.x warns on every run unless the fixture loop scope is set explicitly.
+asyncio_default_fixture_loop_scope = "function"

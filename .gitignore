@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Data (connectome dumps are large; keep fixtures under tests/)
+data/*
+!data/.gitkeep
+!data/README.md
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# Dry-run artifacts and bytecode (SPEC section i.7)
+out/
+backend/**/__pycache__/
+.workflows/
+out/
+
+# Backend runtime dirs (data_dir/out_dir when run from backend/)
+backend/data/
+backend/out/

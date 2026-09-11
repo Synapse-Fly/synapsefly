@@ -1,0 +1,10 @@
+# Runtime hard dependencies (SPEC section 0.1) pinned to the versions verified in RESEARCH section 11.
+numpy==2.4.3
+fastapi==0.135.2
+uvicorn==0.42.0
+websockets==16.0
+pydantic==2.12.5
+httpx==0.28.1
+# Dev / test
+pytest==9.1.1
+pytest-asyncio==1.4.0

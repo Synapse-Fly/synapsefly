@@ -1,0 +1,50 @@
+# SynapseFly full stack (backend brain + frontend page), all on your VPS.
+# Both containers join the EXISTING Caddy network (crypto-automation_social-engine-net)
+# so `social-engine-proxy` (caddy) reverse-proxies to them by name. Neither publishes a
+# host port, so nothing on 80/443/3000/4000 of the host is touched.
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: synapsefly-backend:latest
+    container_name: synapsefly-backend
+    restart: unless-stopped
+    env_file:
+      - ./synapsefly.env
+    expose:
+      - "4000"
+    volumes:
+      - synapsefly_data:/app/data
+    networks:
+      - caddy_net
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_WS_URL: "wss://api.synapsefly.com/ws"
+        NEXT_PUBLIC_API_URL: "https://api.synapsefly.com"
+    image: synapsefly-frontend:latest
+    container_name: synapsefly-frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    networks:
+      - caddy_net
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  caddy_net:
+    external: true
+    name: crypto-automation_social-engine-net
+
+volumes:
+  synapsefly_data:

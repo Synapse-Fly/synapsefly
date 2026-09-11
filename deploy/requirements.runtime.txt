@@ -1,0 +1,11 @@
+# Container runtime deps only (no pytest, no torch/pandas/pyarrow/neuprint).
+# Synthetic connectome + DexScreener + dry-run agent need nothing heavier than this.
+numpy==2.4.3
+fastapi==0.135.2
+uvicorn[standard]==0.42.0
+websockets==16.0
+pydantic==2.12.5
+httpx==0.28.1
+# Included so FLY_LLM=anthropic / FLY_X=post can be switched on by env later without a rebuild:
+anthropic==0.86.0
+tweepy==4.17.0

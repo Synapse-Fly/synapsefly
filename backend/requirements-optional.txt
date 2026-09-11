@@ -1,0 +1,7 @@
+# Optional dependencies: imported inside functions only, never at module import time (SPEC section 0.1).
+torch==2.11.0                 # FLY_BACKEND=torch|auto propagator
+anthropic==0.86.0             # FLY_LLM=anthropic
+tweepy==4.17.0                # FLY_X=post
+pyarrow==25.0.1               # scripts/prepare_malecns.py (GCS feathers -> CSV)
+pandas==3.0.5                 # scripts/prepare_malecns.py
+neuprint-python==0.6.3        # scripts/fetch_neuprint.py (token route)

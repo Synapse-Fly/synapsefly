@@ -1,0 +1,15 @@
+# --- SynapseFly (append to /root/crypto-automation/Caddyfile.vps) ---
+# Adds three new vhosts; touches nothing above. Caddy auto-issues Let's Encrypt certs
+# and transparently forwards the WebSocket Upgrade on /ws.
+
+api.synapsefly.com {
+	reverse_proxy synapsefly-backend:4000
+}
+
+synapsefly.com {
+	reverse_proxy synapsefly-frontend:3000
+}
+
+www.synapsefly.com {
+	redir https://synapsefly.com{uri}
+}
