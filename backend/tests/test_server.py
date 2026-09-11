@@ -982,6 +982,12 @@ def test_poke_limiter_forgets_stale_and_closed_clients(client: TestClient) -> No
     assert "ws:later" not in ctx._poke_hits
     assert ctx.allow_poke("ws:later", now=200.0) is True       # a fresh client, a fresh budget
 
+    # The lines above drove the sweep with a FAKE clock (now=200.0); the WS handler below uses the real
+    # time.monotonic(), which on a freshly-booted CI runner can be < 200, so a fake-future 'ws:later'
+    # would never fall out of its window. Clear the table so this block tests only what it names: a
+    # CLOSED socket's key is forgotten.
+    ctx._poke_hits.clear()
+
     with client.websocket_connect("/ws") as ws:
         assert json.loads(ws.receive_text())["type"] == "hello"
         for _ in range(3):
