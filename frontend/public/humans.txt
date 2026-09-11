@@ -6,3 +6,5 @@
 /* TECH */
   Next.js, TypeScript, three.js, FastAPI, numpy spiking-neural-net.
   Brain: Janelia FlyEM MaleCNS connectome (CC-BY).
+
+/* pushed by flybrain-dev */
