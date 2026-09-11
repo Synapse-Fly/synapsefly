@@ -136,7 +136,7 @@ class SimulationLoop(threading.Thread):
         self.replay_diffs: list[tuple[int, int, int]] = []
         self.replay_ticks: int = 0
 
-        self._stop = threading.Event()
+        self._stop_event = threading.Event()
         self._ready = threading.Event()
         self._lock = threading.Lock()
         self._latest: dict | None = None
@@ -192,7 +192,7 @@ class SimulationLoop(threading.Thread):
 
     def stop(self, timeout_s: float = 2.0) -> None:
         """Ask the thread to finish the current tick and join it (idempotent)."""
-        self._stop.set()
+        self._stop_event.set()
         if self.is_alive():
             self.join(max(0.0, float(timeout_s)))
             if self.is_alive():  # pragma: no cover - a wedged tick must not wedge shutdown
@@ -200,7 +200,7 @@ class SimulationLoop(threading.Thread):
 
     @property
     def stopped(self) -> bool:
-        return self._stop.is_set()
+        return self._stop_event.is_set()
 
     def run(self) -> None:
         """Startup (tonic table + hello), then one iteration per wall tick until ``stop()``."""
@@ -212,13 +212,13 @@ class SimulationLoop(threading.Thread):
             log.exception("loop: startup failed (%s)", exc)
             return
         deadline = time.perf_counter()
-        while not self._stop.is_set():
+        while not self._stop_event.is_set():
             t0 = time.perf_counter()
             try:
                 self.tick_once()
             except StopIteration:
                 log.info("loop: replay exhausted after %d tick(s)", self.replay_ticks)
-                self._stop.set()
+                self._stop_event.set()
                 break
             except Exception as exc:  # noqa: BLE001 - SPEC 0.1: errors never stop the sim
                 self._note_tick_error(exc)
@@ -229,7 +229,7 @@ class SimulationLoop(threading.Thread):
             deadline += self.tick_s
             now = time.perf_counter()
             if now < deadline:
-                self._stop.wait(deadline - now)
+                self._stop_event.wait(deadline - now)
             elif now - deadline > self.tick_s:
                 # chronically late: resync the grid instead of accumulating a backlog. Ticks are never
                 # skipped (SPEC c.27 step 12), the brain clock simply slows down via ``speed``.
