@@ -119,3 +119,5 @@ is the proof that the fly on the screen is driven by a real neural architecture,
 <div align="center">
 <sub>Built with connectomics, a spiking-neural-net, and a sense of humor. Not financial advice — it's a bug. 🪰</sub>
 </div>
+
+<!-- deploy: 8f88971 -->
