@@ -26,10 +26,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@SynapseFly",
+    creator: "@SynapseFly",
     title: TITLE,
     description: DESC,
     images: ["/og.png"],
   },
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

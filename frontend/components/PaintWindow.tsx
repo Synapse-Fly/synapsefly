@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, type RefObject } from "react";
 import type { FlySocket } from "@/lib/ws";
 import { useTickSnapshot } from "@/lib/store";
 import type { InkStyle, Mood, PokeStim } from "@/lib/types";
-import Win95Window from "./Win95Window";
+import Win95Window, { type WinRect } from "./Win95Window";
 import MenuBar, { type MenuAction, type MenuFlags } from "./MenuBar";
 import ToolPalette from "./ToolPalette";
 import ColorPalette from "./ColorPalette";
@@ -18,12 +18,13 @@ export interface PaintWindowProps {
   onAction(a: MenuAction): void;
   canvasRef: RefObject<FlyCanvasHandle | null>;
   flags?: Partial<MenuFlags>;
+  rect?: WinRect;
 }
 
 export const PAINT_RECT = { x: 16, y: 16, w: 880, h: 600 };
 const DEFAULT_INK: InkStyle = { color: "#000000", width: 2, alpha: 1, style: "solid", stamp: null };
 
-export default function PaintWindow({ sock, onAction, canvasRef, flags = {} }: PaintWindowProps) {
+export default function PaintWindow({ sock, onAction, canvasRef, flags = {}, rect }: PaintWindowProps) {
   const tick = useTickSnapshot(sock.store);
   const [active, setActive] = useState<PokeStim>("sugar");
   const [lastPoke, setLastPoke] = useState<{ stim: PokeStim; at: number } | null>(null);
@@ -65,7 +66,7 @@ export default function PaintWindow({ sock, onAction, canvasRef, flags = {} }: P
         /* eslint-disable-next-line @next/next/no-img-element */
         <img src="/favicon-48.png" alt="" width={16} height={16} style={{ imageRendering: "pixelated" }} />
       }
-      initial={PAINT_RECT}
+      initial={rect ?? PAINT_RECT}
       menu={<MenuBar sock={sock} onAction={onAction} flags={flags} />}
       statusBar={<StatusBar store={sock.store} hello={sock.hello} status={sock.status} attempt={sock.attempt} fps={flags.fps ? fps : null} moodNow={moodNow} />}
       collapsible

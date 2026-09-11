@@ -2,8 +2,9 @@
 // SPEC section e.7 `page.tsx`: creates the socket, the canvas handle, the UI flags, the MenuAction dispatcher, the
 // document-level keyboard shortcuts and the snapshot service (section e.6); renders the Win95 desktop with the four
 // windows (Paint, Oscilloscope, Fly Status, tweets.txt) and a taskbar with a clock.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFlySocket } from "@/lib/ws";
+import { X_URL, GITHUB_URL } from "@/lib/brand";
 import { postMarketMode, postSnapshot, postTweetTest } from "@/lib/api";
 import { postPoke } from "@/lib/api";
 import type { ClientMsg, MarketMode, PokeStim } from "@/lib/types";
@@ -30,6 +31,41 @@ const WINDOWS = [
   { id: "brain", label: "Fly Brain (3D)" },
   { id: "tweets", label: "tweets.txt - Notepad" },
 ];
+
+/** Live viewport size (for a full-screen tiled default layout). */
+function useViewport(): { w: number; h: number } {
+  const [vp, setVp] = useState<{ w: number; h: number }>({ w: 1440, h: 860 });
+  useEffect(() => {
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return vp;
+}
+
+/** Tile the 5 windows to fill the viewport: left column (Paint over tweets), right column (raster/status/brain). */
+function computeLayout(w: number, h: number) {
+  const PAD = 8, GAP = 6, TASK = 34;
+  const availW = Math.max(900, w - 2 * PAD);
+  const availH = Math.max(560, h - TASK - PAD);
+  const leftW = Math.round(availW * 0.6) - 3;
+  const rightW = availW - leftW - GAP;
+  const rightX = PAD + leftW + GAP;
+  const tweetsH = Math.max(150, Math.round(availH * 0.24));
+  const paintH = availH - tweetsH - GAP;
+  const rasterH = Math.round(availH * 0.32);
+  const statusH = Math.round(availH * 0.3);
+  const brainH = availH - rasterH - statusH - 2 * GAP;
+  return {
+    height: availH + PAD,
+    paint: { x: PAD, y: PAD, w: leftW, h: paintH },
+    tweets: { x: PAD, y: PAD + paintH + GAP, w: leftW, h: tweetsH },
+    raster: { x: rightX, y: PAD, w: rightW, h: rasterH },
+    status: { x: rightX, y: PAD + rasterH + GAP, w: rightW, h: statusH },
+    brain: { x: rightX, y: PAD + rasterH + statusH + 2 * GAP, w: rightW, h: brainH },
+  };
+}
 
 function isEditableTarget(t: EventTarget | null): boolean {
   const el = t as HTMLElement | null;
@@ -93,6 +129,8 @@ function BrainIcon() {
 export default function Home() {
   const sock = useFlySocket();
   const stacked = useStacked();
+  const vp = useViewport();
+  const layout = useMemo(() => computeLayout(vp.w, vp.h), [vp.w, vp.h]);
   const canvasRef = useRef<FlyCanvasHandle | null>(null);
   const [flags, setFlags] = useState<MenuFlags>({ labels: true, frozen: false, zoom: false, fps: false, flip: false });
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -226,25 +264,25 @@ export default function Home() {
   }), [on]);
 
   const desktopClass = stacked ? "flex flex-col gap-2 p-2" : "relative";
-  const desktopStyle = stacked ? undefined : { minHeight: 920, width: "100%" };
+  const desktopStyle = stacked ? undefined : { height: layout.height, width: "100%" };
 
   return (
     <div className="min-h-screen pb-[34px]" data-testid="desktop">
       <div className={desktopClass} style={desktopStyle}>
-        <PaintWindow sock={sock} onAction={dispatch} canvasRef={canvasRef} flags={flags} />
-        <Win95Window id="raster" title="Oscilloscope - spike raster" icon={<OscilloscopeIcon />} initial={{ x: 912, y: 16, w: 560, h: 300 }}>
+        <PaintWindow sock={sock} onAction={dispatch} canvasRef={canvasRef} flags={flags} rect={layout.paint} />
+        <Win95Window id="raster" title="Oscilloscope - spike raster" icon={<OscilloscopeIcon />} initial={layout.raster}>
           <SpikeRaster sock={sock} frozen={flags.frozen} labels={flags.labels} />
         </Win95Window>
-        <Win95Window id="status" title="Fly Status" icon={<StatusIcon />} initial={{ x: 912, y: 332, w: 560, h: 290 }}>
+        <Win95Window id="status" title="Fly Status" icon={<StatusIcon />} initial={layout.status}>
           <div className="grid h-full min-h-0 grid-cols-2 gap-[2px] overflow-hidden bg-win-gray">
             <div className="min-h-0 overflow-auto"><MoodPanel sock={sock} /></div>
             <div className="min-h-0 overflow-auto"><MarketTicker sock={sock} /></div>
           </div>
         </Win95Window>
-        <Win95Window id="brain" title="Fly Brain (3D) - live connectome" icon={<BrainIcon />} initial={{ x: 912, y: 638, w: 560, h: 430 }}>
+        <Win95Window id="brain" title="Fly Brain (3D) - live connectome" icon={<BrainIcon />} initial={layout.brain}>
           <BrainView3D sock={sock} />
         </Win95Window>
-        <Win95Window id="tweets" title="tweets.txt - Notepad" icon={<NotepadIcon />} initial={{ x: 16, y: 632, w: 880, h: 190 }} collapsible>
+        <Win95Window id="tweets" title="tweets.txt - Notepad" icon={<NotepadIcon />} initial={layout.tweets} collapsible>
           <TweetNotepad sock={sock} onTest={() => dispatch({ kind: "tweet_test" })} />
         </Win95Window>
       </div>
@@ -263,6 +301,13 @@ export default function Home() {
           </button>
         ))}
         <div className="flex-1" />
+        <a href={X_URL} target="_blank" rel="noopener noreferrer" className="btn95 flex h-[22px] items-center gap-1 font-bold" title="Follow @SynapseFly on X">
+          <span aria-hidden>𝕏</span> Follow
+        </a>
+        <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="btn95 flex h-[22px] items-center gap-1" title="Source on GitHub">
+          <span aria-hidden>★</span> GitHub
+        </a>
+        <div className="mx-1 h-[22px] w-[2px] border-l border-win-dark border-r-white" style={{ borderRightWidth: 1, borderRightStyle: "solid" }} />
         <div className="bevel-in flex h-[22px] items-center gap-1 bg-win-gray px-2 text-[11px]" title={`websocket ${sock.status}${sock.latencyMs !== null ? `, ${sock.latencyMs} ms` : ""}`}>
           <span className="inline-block h-[8px] w-[8px] rounded-full border border-black" style={{ background: sock.status === "open" ? "#00a800" : sock.status === "connecting" ? "#e0c000" : "#d00000" }} />
           {sock.status === "open" ? (sock.latencyMs !== null ? `${sock.latencyMs} ms` : "online") : sock.status === "reconnecting" ? `reconnecting (${sock.attempt})` : sock.status}
