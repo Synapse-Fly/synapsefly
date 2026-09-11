@@ -14,7 +14,7 @@ import { interpolate, type FlyPose } from "@/lib/interp";
 import { drawFly, drawHourglass } from "@/lib/flySprite";
 import { drawInk, drawStamp, resetInkState } from "@/lib/ink";
 import { fmtPrice } from "@/lib/api";
-import { postPoke } from "@/lib/api";
+import { getState, postPoke } from "@/lib/api";
 
 export interface FlyCanvasHandle { clear(): void; composite(): HTMLCanvasElement; dirty(): boolean }
 export interface FlyCanvasProps {
@@ -30,6 +30,10 @@ const DEFAULT_W = 800, DEFAULT_H = 500;
 const STREAK_MS = 400;
 const POKE_MIN_INTERVAL_MS = 500;
 const DEFAULT_TICK_MS = 50;
+// A trail segment longer than this is a jump/teleport, not a stroke; a seq gap wider than this means rAF was
+// throttled (hidden tab) and the ring of 4 has rolled, so the trail is repainted from the server instead.
+const MAX_SEGMENT_PX = 60;
+const MAX_SEQ_GAP = 3;
 
 interface Streak { x: number; y: number; heading: number; until: number }
 
@@ -164,6 +168,44 @@ export default function FlyCanvas({ sock, onFps, flip, pokeStim = "sugar", ref }
     let streaks: Streak[] = [];
     let frames = 0;
     let fpsT0 = performance.now();
+    let backfilling = false;
+    let disposed = false;
+
+    // The trail only ever grows inside this rAF loop, but a hidden tab throttles rAF to zero while the socket keeps
+    // delivering ticks into the ring of 4 - so minutes of painting would be lost and replaced by one straight chord.
+    // The server keeps the authoritative trail (GET /api/state, SPEC c.28), so on a seq gap, on becoming visible and
+    // once on mount (which also restores the painting across an F5) we repaint the whole trail from it.
+    const backfillTrail = async (reason: string) => {
+      if (backfilling || disposed) return;
+      backfilling = true;
+      lastDrawn = null; // no segment is drawn from a stale pose while the repaint is in flight
+      try {
+        const pts = (await getState()).trail ?? [];
+        if (disposed || pts.length === 0) return;
+        tctx.clearRect(0, 0, trail.width, trail.height);
+        resetInkState(tctx);
+        const tSec = performance.now() / 1000;
+        for (let i = 1; i < pts.length; i++) {
+          const [x0, y0] = pts[i - 1];
+          const [x1, y1, color, width] = pts[i];
+          if (Math.hypot(x1 - x0, y1 - y0) > MAX_SEGMENT_PX) continue; // jump / wrap: not a painted stroke
+          drawInk(tctx, x0, y0, x1, y1, { color, width, alpha: 1, style: "solid", stamp: null }, tSec);
+        }
+        const last = pts[pts.length - 1];
+        lastDrawn = { x: last[0], y: last[1] };
+        dirtyRef.current = true;
+      } catch (e) {
+        console.warn(`[canvas] trail backfill (${reason}) failed`, e);
+      } finally {
+        backfilling = false;
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void backfillTrail("visible");
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    void backfillTrail("mount");
 
     const handleNewTick = (seqPrev: number, now: number) => {
       const latest = store.latest();
@@ -206,7 +248,9 @@ export default function FlyCanvas({ sock, onFps, flip, pokeStim = "sugar", ref }
         const latest = store.latest();
         if (latest) {
           if (latest.tick.seq !== lastSeq) {
-            handleNewTick(lastSeq, now);
+            const gap = lastSeq >= 0 ? latest.tick.seq - lastSeq : 0;
+            if (gap > MAX_SEQ_GAP) void backfillTrail(`seq gap ${gap}`);
+            else handleNewTick(lastSeq, now);
             lastSeq = latest.tick.seq;
           }
           const prev = store.prev();
@@ -250,7 +294,11 @@ export default function FlyCanvas({ sock, onFps, flip, pokeStim = "sugar", ref }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      cancelAnimationFrame(raf);
+    };
   }, [store]);
 
   const onPointerDown = useCallback((e: ReactPointerEvent<HTMLCanvasElement>) => {

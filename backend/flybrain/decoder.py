@@ -26,6 +26,12 @@ so a consumer never sees a takeoff while the fly is visibly feeding. ``feed_star
 ``{side, count}``, one per tick with DNp01 spikes), ``jump``, ``song``, ``saccade``, ``wander_floor`` fire on their
 triggers.
 
+Deviation from f.3 (one, measurable, dialable): a freezing bout is capped at ``FREEZE_MAX_MS`` of accumulated
+standing-still-under-threat and followed by a ``FREEZE_REFRACTORY_MS`` window in which the fly cannot re-freeze.
+f.3 has no upper bound on a bout, and a market drawdown keeps ``lc_freeze`` (f.2 row 8) above the exit rate
+indefinitely, so without the cap the fly freezes for the whole drawdown and the canvas stays empty - see the
+constants below and the ``spec_issues`` of the fixer pass. ``FREEZE_MAX_MS = 0`` restores the literal f.3 rule.
+
 Pose feedback: the decoder does not own the body, so ``MotorDecoder.observe(kin)`` may be called by the loop
 after ``FlyBody.integrate`` to hand back the true heading and speed. Without it the decoder mirrors SPEC f.4
 internally (it integrates the heading it commanded and relaxes its own speed estimate, used by the wander
@@ -394,7 +400,8 @@ class MotorDecoder:
 
     Held timers (all brain ms), the c.18 list plus the ones the f.3 rules need: ``last_jump_ms``,
     ``feed_enter_timer`` / ``feed_exit_timer``, ``groom_until``, ``stall_timer`` (wander floor), plus the freeze
-    (``freeze_since_ms``, ``freeze_exit_timer``) and flight (``fly_enter_timer`` / ``fly_exit_timer``) timers.
+    (``freeze_since_ms``, ``freeze_exit_timer``, plus ``freeze_load_ms`` / ``freeze_block_until`` of the bout cap)
+    and flight (``fly_enter_timer`` / ``fly_exit_timer``) timers.
     Three of the c.18 timers are **recorded but never read** by any f.3 rule, and are kept only because c.18
     mandates them (they are reported by ``timers()`` for the selftest / debug UI): ``court_until`` (the last tick
     at which the court condition held - f.3's court rule has no hangover), ``saccade_until`` (the saccade is
