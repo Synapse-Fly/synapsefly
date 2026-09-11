@@ -19,7 +19,7 @@ html {
 }
 
 body {
-  font: 12px "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Arial, system-ui, sans-serif;
+  font: 13px "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Arial, system-ui, sans-serif;
   margin: 0;
   background: #008080;
   color: #000000;
@@ -88,7 +88,7 @@ canvas {
 
 /* Menu bar / dropdown look (MenuBar.tsx). */
 .menu-item {
-  padding: 1px 6px;
+  padding: 3px 10px;
   user-select: none;
   cursor: default;
 }
@@ -103,13 +103,13 @@ canvas {
   background: #c0c0c0;
   box-shadow: 1px 1px 0 #000;
   padding: 2px;
-  min-width: 160px;
+  min-width: 184px;
 }
 .menu-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 18px 2px 20px;
+  padding: 4px 22px 4px 24px;
   white-space: nowrap;
   user-select: none;
   cursor: default;

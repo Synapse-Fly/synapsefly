@@ -190,7 +190,7 @@ export default function MenuBar({ sock, onAction, flags = {} }: MenuBarProps) {
   }, [onAction, close]);
 
   const renderRows = (items: Item[], depth: number): ReactNode => (
-    <div className="menu-drop text-[12px]" role="menu">
+    <div className="menu-drop text-[13px]" role="menu">
       {items.map((it, i) => {
         if (it.sep) return <div key={"sep" + i} className="menu-sep" />;
         const isSubOpen = !!it.sub && sub === it.label;
@@ -220,7 +220,7 @@ export default function MenuBar({ sock, onAction, flags = {} }: MenuBarProps) {
   return (
     <div
       ref={rootRef}
-      className="relative flex h-[20px] items-center bg-win-gray px-[2px] text-[12px]"
+      className="relative flex h-[24px] items-center bg-win-gray px-[2px] text-[13px]"
       data-menu-open={open !== null ? "true" : undefined}
       role="menubar"
     >

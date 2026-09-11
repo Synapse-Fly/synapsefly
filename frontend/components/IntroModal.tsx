@@ -55,7 +55,7 @@ export default function IntroModal({ sock, onClose }: IntroModalProps) {
     >
       <div className="bevel-out flex max-h-[92vh] w-full max-w-[580px] flex-col overflow-hidden" style={{ boxShadow: "2px 2px 0 #000" }}>
         {/* title bar */}
-        <div className="titlebar flex items-center gap-2 text-[12px]">
+        <div className="titlebar flex items-center gap-2 text-[13px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/favicon-48.png" alt="" width={16} height={16} style={PIXELATED} />
           <span className="flex-1">SynapseFly (${symbol}) — what is this?</span>

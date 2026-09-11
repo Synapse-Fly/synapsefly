@@ -200,7 +200,7 @@ export default function Win95Window({ id, title, icon, initial, menu, statusBar,
       onAnimationEnd={() => setShaking(false)}
     >
       <div
-        className="titlebar flex h-[20px] items-center gap-1 text-[12px]"
+        className="titlebar flex h-[22px] items-center gap-1 text-[13px]"
         style={{ cursor: stacked ? "default" : "move", padding: "0 2px 0 4px" }}
         onPointerDown={onTitlePointerDown}
         onPointerMove={onTitlePointerMove}
@@ -210,15 +210,15 @@ export default function Win95Window({ id, title, icon, initial, menu, statusBar,
       >
         {icon ? <span className="flex h-4 w-4 items-center justify-center" aria-hidden>{icon}</span> : null}
         <span className="flex-1 truncate">{title}</span>
-        <button type="button" className="btn95 h-[14px] w-4 text-[10px] leading-none font-bold" title="Minimize"
+        <button type="button" className="btn95 h-[16px] w-[18px] text-[11px] leading-none font-bold" title="Minimize"
           style={{ padding: 0 }} disabled={!collapsible} onClick={() => setCollapsed((c) => !c)} aria-label="collapse">
           <span className="relative top-[-3px]">_</span>
         </button>
-        <button type="button" className="btn95 h-[14px] w-4 text-[10px] leading-none font-bold" title="Maximize (zoom 1.5x)"
+        <button type="button" className="btn95 h-[16px] w-[18px] text-[11px] leading-none font-bold" title="Maximize (zoom 1.5x)"
           style={{ padding: 0 }} onClick={() => setZoom((v) => !v)} aria-pressed={zoom} aria-label="zoom">
           <span className="relative top-[-1px]">&#9633;</span>
         </button>
-        <button type="button" className="btn95 ml-[2px] h-[14px] w-4 text-[10px] leading-none font-bold" title="Close"
+        <button type="button" className="btn95 ml-[2px] h-[16px] w-[18px] text-[11px] leading-none font-bold" title="Close"
           style={{ padding: 0 }} onClick={onCloseClick} aria-label="close">
           <span className="relative top-[-1px]">&times;</span>
         </button>
@@ -250,7 +250,7 @@ export function MessageBox({ title, children, buttons, icon, width = 420 }: Mess
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.15)" }} role="dialog" aria-modal="true">
       <div className="bevel-out flex flex-col" style={{ width }}>
-        <div className="titlebar flex h-[20px] items-center text-[12px]" style={{ padding: "0 4px" }}>
+        <div className="titlebar flex h-[22px] items-center text-[13px]" style={{ padding: "0 4px" }}>
           <span className="flex-1 truncate">{title}</span>
         </div>
         <div className="flex gap-3 p-3 text-[12px]">
