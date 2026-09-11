@@ -15,6 +15,7 @@ import SpikeRaster from "@/components/SpikeRaster";
 import MoodPanel from "@/components/MoodPanel";
 import MarketTicker from "@/components/MarketTicker";
 import TweetNotepad from "@/components/TweetNotepad";
+import IntroModal from "@/components/IntroModal";
 
 type Dialog = null | { kind: "about" } | { kind: "confirm_clear"; run_id: string };
 
@@ -85,6 +86,11 @@ export default function Home() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const dialogRef = useRef<Dialog>(null);
   useEffect(() => { dialogRef.current = dialog; }, [dialog]);
+  const [showIntro, setShowIntro] = useState(false);
+  const showIntroRef = useRef(false);
+  useEffect(() => { showIntroRef.current = showIntro; }, [showIntro]);
+  useEffect(() => { try { if (!localStorage.getItem("synapsefly_intro_v1")) setShowIntro(true); } catch { /* private mode */ } }, []);
+  const closeIntro = useCallback(() => { setShowIntro(false); try { localStorage.setItem("synapsefly_intro_v1", "1"); } catch { /* ignore */ } }, []);
   const lastRunId = useRef<string | null>(null);
   const { send, on } = sock;
 
@@ -150,7 +156,7 @@ export default function Home() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isEditableTarget(e.target)) return;
-      if (dialogRef.current) return;
+      if (dialogRef.current || showIntroRef.current) return;
       if (document.querySelector("[data-menu-open]")) return;
       if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === "n" && !e.shiftKey && !e.altKey) { e.preventDefault(); dispatch({ kind: "clear" }); }
@@ -220,6 +226,9 @@ export default function Home() {
         <button type="button" className="btn95 flex h-[22px] items-center gap-1 font-bold" onClick={() => setDialog({ kind: "about" })} title="About FlyBrain">
           <PaintIcon /> FlyBrain
         </button>
+        <button type="button" className="btn95 flex h-[22px] items-center gap-1 font-bold" onClick={() => setShowIntro(true)} title="What is this? (intro)">
+          <span aria-hidden>❓</span> What is this?
+        </button>
         <div className="mx-1 h-[22px] w-[2px] border-l border-win-dark border-r-white" style={{ borderRightWidth: 1, borderRightStyle: "solid" }} />
         {WINDOWS.map((w) => (
           <button key={w.id} type="button" className="btn95 h-[22px] min-w-[120px] truncate text-left" onClick={() => focusWindow(w.id)} title={w.label}>
@@ -234,6 +243,7 @@ export default function Home() {
         <Clock />
       </div>
 
+      {showIntro ? <IntroModal sock={sock} onClose={closeIntro} /> : null}
       {dialog?.kind === "about" ? <AboutDialog hello={sock.hello} store={sock.store} onClose={() => setDialog(null)} /> : null}
       {dialog?.kind === "confirm_clear" ? (
         <MessageBox
