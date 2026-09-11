@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Emit a self-contained server bundle (.next/standalone) so the Docker
-  // runtime image stays small and needs no node_modules at runtime.
-  output: "standalone",
+  /* Vercel handles build output itself; no `output: standalone` here
+     (that is only for a self-hosted Docker build and breaks Vercel's finalize step). */
 };
 
 export default nextConfig;
