@@ -234,6 +234,12 @@ class SimulationLoop(threading.Thread):
                 # chronically late: resync the grid instead of accumulating a backlog. Ticks are never
                 # skipped (SPEC c.27 step 12), the brain clock simply slows down via ``speed``.
                 deadline = now
+        broker = getattr(self.agent, "snapshots", None) if self.agent is not None else None
+        if broker is not None:
+            try:
+                broker.save_trail(force=True)  # final flush so a graceful stop persists the latest painting
+            except Exception as exc:  # noqa: BLE001
+                log.debug("loop: final trail save failed (%s)", exc)
         log.info("loop: stopped after %d tick(s), t_ms=%d, %d error(s)", self.seq, self.t_ms, self.n_errors)
 
     def _note_tick_error(self, exc: BaseException) -> None:
@@ -361,6 +367,7 @@ class SimulationLoop(threading.Thread):
         if broker is not None:
             try:
                 broker.record_trail(kin.x, kin.y, ink.color, ink.width)
+                broker.save_trail()  # throttled internally (~every 10s): keeps the shared painting across a restart
             except Exception as exc:  # noqa: BLE001
                 log.debug("loop: record_trail failed (%s)", exc)
 

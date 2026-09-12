@@ -902,6 +902,44 @@ def test_snapshot_broker_timeout_falls_back(tmp_path):
     assert broker4.trail() == [] and broker4.trail_px == 0.0 and broker4.trail_wire() == []
 
 
+def test_snapshot_broker_trail_persists_across_restart(tmp_path):
+    """The shared painting must survive a backend restart (redeploy): the trail ring is flushed to
+    data/trail.json and a fresh broker restores it, so nobody's canvas blanks and everyone converges
+    on the same picture via GET /api/state."""
+    settings = make_settings(tmp_path)
+    body = SimpleNamespace(kin=SimpleNamespace(x=100.0, y=100.0, heading=0.0, mode="walk"))
+    bus = FakeBus(clients=0, tick=make_tick())
+
+    broker = SnapshotBroker(bus, body, settings)
+    for i in range(10):
+        broker.record_trail(100.0 + i, 200.0 + i, "#00ff00", 2.0)
+    broker.save_trail(force=True)
+    trail_path = settings.data_dir / "trail.json"
+    assert trail_path.exists()
+    saved_wire = broker.trail_wire()
+    saved_px = broker.trail_px
+
+    # a throttled (non-forced) save right after must NOT rewrite the file (so the disk still holds saved_wire)
+    mtime0 = trail_path.stat().st_mtime_ns
+    broker.record_trail(300.0, 300.0, "#ff0000", 3.0)
+    broker.save_trail()
+    assert trail_path.stat().st_mtime_ns == mtime0
+
+    # a fresh broker (the restart) restores the persisted ring, the running length and the last point
+    reborn = SnapshotBroker(bus, body, settings)
+    assert reborn.trail_wire() == saved_wire
+    assert reborn._last == (109.0, 209.0)
+    assert reborn.trail_px == pytest.approx(saved_px)
+
+    # clearing persists the empty state, so a restart cannot resurrect the old painting
+    reborn.clear_trail()
+    assert SnapshotBroker(bus, body, settings).trail_wire() == []
+
+    # a corrupt file is ignored, not fatal
+    trail_path.write_text("{ not json", encoding="utf-8")
+    assert SnapshotBroker(bus, body, settings).trail_wire() == []
+
+
 # ----------------------------------------------------------------------------- regressions (review round 2)
 def test_agent_concurrent_fire_unique_stems(tmp_path):
     """SPEC c.24 / d.4: the artifact stem IS the record ``id``, so parallel fire() calls must not share one.

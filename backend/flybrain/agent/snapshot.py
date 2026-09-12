@@ -13,8 +13,10 @@
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import math
+import os
 import threading
 import time
 from collections import deque
@@ -34,6 +36,7 @@ log = logging.getLogger("flybrain.agent.snapshot")
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 TRAIL_RING = 4000
+TRAIL_SAVE_INTERVAL_S = 10.0  # throttle for the periodic trail flush written by the sim thread
 FRAME_PX = 3
 TITLE_PX = 20
 STATUS_PX = 20
@@ -353,6 +356,13 @@ class SnapshotBroker:
         w = int(getattr(settings, "canvas_w", 800) or 800)
         h = int(getattr(settings, "canvas_h", 500) or 500)
         self.canvas = (w, h)
+        # The trail is the shared painting: everyone who loads the page backfills it from GET /api/state, so it must
+        # survive a backend restart (a redeploy would otherwise blank the canvas for every viewer). Persisted to
+        # data/trail.json - the same volume that already holds snapshots/tweets - flushed on a throttle by the sim
+        # thread and once more on shutdown. data_dir is on a Docker named volume in production (deploy/).
+        self._trail_path = Path(getattr(settings, "data_dir", "data")) / "trail.json"
+        self._last_save = 0.0
+        self._load_trail()
 
     # -- trail (sim thread)
     def record_trail(self, x: float, y: float, color: str, width: float) -> None:
@@ -378,6 +388,60 @@ class SnapshotBroker:
             self._trail.clear()
             self._last = None
             self._trail_px = 0.0
+        # Persist immediately so a restart right after a clear cannot resurrect the old painting.
+        self.save_trail(force=True)
+
+    # -- persistence
+    def _load_trail(self) -> None:
+        """Restore the trail ring from data/trail.json on boot (best effort; a missing or corrupt file is ignored)."""
+        try:
+            raw = self._trail_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            log.warning("agent.snapshot: could not read trail (%s)", exc)
+            return
+        try:
+            doc = json.loads(raw)
+            pts = doc.get("trail") if isinstance(doc, dict) else None
+            if not isinstance(pts, list):
+                return
+            restored: list[tuple[float, float, str, float]] = []
+            for pt in pts[-TRAIL_RING:]:
+                x, y, color, width = float(pt[0]), float(pt[1]), str(pt[2]), float(pt[3])
+                if math.isfinite(x) and math.isfinite(y) and math.isfinite(width):
+                    restored.append((x, y, color, width))
+        except (ValueError, TypeError, IndexError) as exc:
+            log.warning("agent.snapshot: ignoring corrupt trail file (%s)", exc)
+            return
+        if not restored:
+            return
+        with self._trail_lock:
+            self._trail.clear()
+            self._trail.extend(restored)
+            self._last = (restored[-1][0], restored[-1][1])
+            self._trail_px = float(doc.get("trail_px", 0.0) or 0.0) if isinstance(doc, dict) else 0.0
+        log.info("agent.snapshot: restored %d trail point(s) from %s", len(restored), self._trail_path)
+
+    def save_trail(self, force: bool = False) -> None:
+        """Atomically write the trail ring to disk, throttled to one write per TRAIL_SAVE_INTERVAL_S unless forced.
+        Safe to call every tick from the sim thread; a write failure never propagates (SPEC 0.1)."""
+        now = time.monotonic()
+        if not force and (now - self._last_save) < TRAIL_SAVE_INTERVAL_S:
+            return
+        self._last_save = now
+        with self._trail_lock:
+            pts = list(self._trail)
+            px = self._trail_px
+        doc = {"trail": [[round(x, 1), round(y, 1), c, round(w, 1)] for x, y, c, w in pts],
+               "trail_px": px}  # kept full-precision (it is a cumulative meander distance, not a drawn coordinate)
+        try:
+            self._trail_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._trail_path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(doc), encoding="utf-8")
+            os.replace(tmp, self._trail_path)
+        except OSError as exc:
+            log.warning("agent.snapshot: could not save trail (%s)", exc)
 
     def trail(self) -> list[tuple[float, float, str, float]]:
         with self._trail_lock:
