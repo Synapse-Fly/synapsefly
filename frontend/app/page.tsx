@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./desktop.css";
 import { useFlySocket } from "@/lib/ws";
-import { X_URL, X_HANDLE, GITHUB_URL } from "@/lib/brand";
+import { CA_FILE, CA_WINDOW_TITLE, TOKEN, X_URL, X_HANDLE, GITHUB_URL } from "@/lib/brand";
 import { postMarketMode, postSnapshot, postTweetTest } from "@/lib/api";
 import { postPoke } from "@/lib/api";
 import type { ClientMsg, MarketMode, PokeStim } from "@/lib/types";
@@ -43,6 +43,7 @@ import MarketTicker from "@/components/MarketTicker";
 import TweetNotepad from "@/components/TweetNotepad";
 import IntroModal from "@/components/IntroModal";
 import BrainView3D from "@/components/BrainView3D";
+import ContractWindow, { CA_WINDOW_ID } from "@/components/ContractWindow";
 
 type Dialog = null | { kind: "about" } | { kind: "confirm_clear"; run_id: string } | { kind: "bin" };
 
@@ -61,12 +62,33 @@ const BIN_ID = "bin";
  * Everything else - Paint, the raster, the notepad, the 3D view - fills its body and maximizes to the whole box.
  */
 const STATUS_MAX_H = 520;
+/**
+ * CA.txt is a dialog, not a tiled app: it holds one address, two links and a warning. It is NOT in lib/layout.ts's
+ * WINDOW_IDS (that file belongs to the tiler and the five apps that fill the desktop), so it never joins the tiling
+ * and gets its own centred rect instead - see `caRect`. These are its size; the rect clamps them to the box.
+ */
+const CA_W = 436, CA_H = 258, CA_STACKED_H = 300;
 
-interface AppMeta { id: WindowId; label: string; icon: IconName; title: string }
+/** `id` is a plain string, not a WindowId: CA.txt lives in the desktop store without being one of the tiled five. */
+interface AppMeta {
+  id: string;
+  label: string;
+  icon: IconName;
+  title: string;
+  /** Desktop icon label, when the window title is too long for an 80 px cell ("CA.txt - Notepad" -> "CA.txt"). */
+  desk?: string;
+}
 
-/** The five apps, in the order they appear on the desktop, in the taskbar and in Start > Programs. */
+/**
+ * The apps, in the order they appear on the desktop, in the taskbar and in Start > Programs.
+ *
+ * CA.txt is deliberately SECOND, directly under Paint: from launch on, "where is the contract address" is the single
+ * most common reason anyone opens this page, and the answer has to be above the fold on a laptop without scrolling,
+ * hunting or a Start menu. Paint keeps the top cell because the painting fly is still the product.
+ */
 const APPS: readonly AppMeta[] = [
   { id: "paint", label: "untitled - Paint", icon: "paint", title: "The fly paints here. Double the product, half the pixels." },
+  { id: CA_WINDOW_ID, label: CA_WINDOW_TITLE, desk: CA_FILE, icon: "contract", title: `The $${TOKEN} contract address - check it here, not in a reply or a DM.` },
   { id: "raster", label: "Oscilloscope", icon: "oscilloscope", title: "Spike raster: every dot is one neuron firing." },
   { id: "status", label: "Fly Status", icon: "status", title: "Mood, drives and the live market feed." },
   { id: "brain", label: "Fly Brain (3D)", icon: "brain", title: "The synthetic connectome, spiking in 3D." },
@@ -74,16 +96,17 @@ const APPS: readonly AppMeta[] = [
 ];
 
 const DESKTOP_ITEMS: readonly DesktopItem[] = [
-  ...APPS.map((a): DesktopItem => ({ id: a.id, label: a.label, icon: a.icon, kind: "window", title: a.title })),
+  ...APPS.map((a): DesktopItem => ({ id: a.id, label: a.desk ?? a.label, icon: a.icon, kind: "window", title: a.title })),
   { id: README_ID, label: "Read Me.txt", icon: "readme", kind: "window", title: "What is this? Start here." },
   { id: "link-x", label: `Follow ${X_HANDLE}`, icon: "x", kind: "link", href: X_URL, title: `SynapseFly on X (${X_HANDLE}) - opens in a new tab` },
   { id: "link-github", label: "GitHub", icon: "github", kind: "link", href: GITHUB_URL, title: "Source on GitHub (Synapse-Fly/synapsefly) - opens in a new tab" },
   { id: BIN_ID, label: "Recycle Bin", icon: "bin", kind: "window", title: "The fly has never deleted anything." },
 ];
 /**
- * The same column without the joke item. A 1366 x 768 laptop fits exactly EIGHT cells in one column, so the ninth -
- * Recycle Bin - wrapped into a second column of its own and charged the tiling a whole 80 px of desktop width for one
- * icon. Below the height where all nine fit, the Bin is the one that goes: it is the only icon that opens nothing.
+ * The same column without the joke item. When the viewport's column height leaves exactly ONE icon over for a second
+ * column, that icon costs the tiling a whole 80 px of desktop width - so the Recycle Bin drops out instead: it is the
+ * only icon on the desktop that opens nothing. (The original case was a 1366 x 768 laptop, which fits eight cells per
+ * column; the rule is written against the live count, not against nine.)
  */
 const DESKTOP_ITEMS_NO_BIN: readonly DesktopItem[] = DESKTOP_ITEMS.filter((it) => it.id !== BIN_ID);
 /** DesktopIcons' own padding, both edges: the column's usable height is its box minus this. */
@@ -96,7 +119,12 @@ const PROGRAMS: readonly StartProgram[] = [
 
 // The window manager needs to know the ids and what a first-time visitor sees BEFORE anything renders: exactly one
 // window, Paint, because a visitor who lands on five windows does not know where to look.
-initDesktop(WINDOW_IDS, ["paint"]);
+//
+// CA.txt is registered here alongside the five tiled windows - the desktop store keys on plain strings, so it gets
+// open/minimized/maximized/z-order and a persisted state like any other window - but it stays CLOSED on a first
+// visit. The launch post tells people to look for the icon, and an unasked-for window over the painting would be the
+// one thing louder than the product. One click opens it.
+initDesktop([...WINDOW_IDS, CA_WINDOW_ID], ["paint"]);
 
 /** Live viewport box, read from documentElement (excludes scrollbars) and throttled with rAF. SSR uses a laptop. */
 function useViewport(): { w: number; h: number } {
@@ -197,10 +225,11 @@ export default function Home() {
   const iconRows = useMemo(() => Math.max(1, Math.floor((iconAreaH - ICON_PAD) / DESKTOP_CELL_H)), [iconAreaH]);
   /**
    * The icons the column actually shows. A wrap that leaves exactly ONE icon in the last column is the bad case -
-   * it buys the visitor one icon for a full 80 px of tiling width (1366 x 768 fits 8 of the 9) - so there the
-   * Recycle Bin drops out and the column stays whole. Every other wrap point is balanced enough to keep, and a
-   * viewport tall enough for all nine (>= ~850 px) always shows all nine. A stacked phone lays the icons out as ROWS
-   * across the top, where the column height means nothing, so nothing is ever dropped there.
+   * it buys the visitor one icon for a full 80 px of tiling width - so there the Recycle Bin drops out and the column
+   * stays whole. Every other wrap point is balanced enough to keep, and a tall enough viewport shows every icon (a
+   * 1080 px screen fits all ten in one column). CA.txt is second either way, so it is above the fold on anything. A
+   * stacked phone lays the icons out as ROWS across the top, where the column height means nothing, so nothing is
+   * ever dropped there.
    */
   const icons = useMemo(
     () => (!stacked && iconRows > 1 && DESKTOP_ITEMS.length % iconRows === 1 ? DESKTOP_ITEMS_NO_BIN : DESKTOP_ITEMS),
@@ -231,6 +260,23 @@ export default function Home() {
     }
     return out;
   }, [stacked, stackedRects, desk, layout]);
+  /**
+   * CA.txt's rect. It is not one of the tiled five, so it gets no share of the tiling: it opens CENTRED over the
+   * desktop (a third of the way down, the classic dialog position), clamped to the box so it is whole at any size.
+   * Stacked, it is one full-width row of the scrolling column like every other window. A visitor who drags it keeps
+   * their position (Win95Window's stored x/y wins over this).
+   */
+  const caRect = useMemo<WinRect>(() => {
+    if (stacked) return { x: 0, y: 0, w: stackedRects.paint.w, h: CA_STACKED_H };
+    const box = layout.box;
+    const w = Math.min(CA_W, box.w);
+    const h = Math.min(CA_H, box.h);
+    return {
+      x: box.x + Math.max(0, Math.round((box.w - w) / 2)),
+      y: box.y + Math.max(0, Math.round((box.h - h) / 3)),
+      w, h,
+    };
+  }, [stacked, stackedRects, layout.box]);
 
   const canvasRef = useRef<FlyCanvasHandle | null>(null);
   const [flags, setFlags] = useState<MenuFlags>({ labels: true, frozen: false, zoom: false, fps: false, flip: false });
@@ -344,6 +390,11 @@ export default function Home() {
           // Drop every stored window position, un-maximize, and re-tile whatever is open (no reload: the socket
           // stays open).
           tileWindows();
+          // CA.txt is a dialog, not one of the tiled five (it is not in WINDOW_IDS), so the tiler never gives it a
+          // slot: left open, tileWindows() would mark it `tiled` yet snap it back to its centred dialog rect,
+          // floating over the freshly tiled grid. Dismiss it instead (close() also clears the bogus `tiled` flag);
+          // one click on its icon, tray chip or Start entry brings it back, centred.
+          desktop.close(CA_WINDOW_ID);
           break;
         case "exit":
           // File > Exit closes the Paint window, like an application. Its desktop icon brings it back.
@@ -450,6 +501,9 @@ export default function Home() {
         <Win95Window id="tweets" title="tweets.txt - Notepad" icon={<AppIcon name="notepad" size={16} />} rect={rects.tweets} bounds={layout.box} onGeometry={onGeometry} collapsible>
           <TweetNotepad sock={sock} onTest={() => dispatch({ kind: "tweet_test" })} />
         </Win95Window>
+        {/* CA.txt renders its own window chrome (like PaintWindow) so the title, the icon and the two states live in
+            one file. Same store, same [_][#][x], same taskbar button - it is just not in the tiling. */}
+        <ContractWindow sock={sock} rect={caRect} bounds={layout.box} onGeometry={onGeometry} />
       </div>
 
       <div className="bevel-out fixed bottom-0 left-0 right-0 z-[99999] flex h-[30px] items-center gap-[3px] px-1" role="toolbar" aria-label="taskbar" data-testid="taskbar">
@@ -505,7 +559,17 @@ export default function Home() {
         </div>
         <div className="tray-sep" aria-hidden />
         {/* System tray. The links live on the desktop and in the Start menu now; these stay as the always-visible
-            shortcut they always were. */}
+            shortcut they always were.
+            The CA chip leads the tray because it is the one thing an arriving visitor is looking for, and unlike its
+            neighbours it is a BUTTON, not a link: it opens CA.txt on this page (where the address comes off the live
+            wire and carries its verify-this warning) instead of sending anyone to a third-party page to find it.
+            Below md it is the icon alone, exactly like the X and GitHub chips, and like them it is flex: none - the
+            tray can never push Start, the connection LED or the clock off a 390 px taskbar. */}
+        <button type="button" className="btn95 ca-chip" onClick={() => openApp(CA_WINDOW_ID)}
+          title={`${CA_WINDOW_TITLE} - check the $${TOKEN} contract address here`} aria-label={`Open ${CA_WINDOW_TITLE}`}
+          data-testid="tray-ca">
+          <AppIcon name="contract" size={16} /><span className="hidden md:inline">CA</span>
+        </button>
         <a href={X_URL} target="_blank" rel="noopener noreferrer" title={`SynapseFly on X (${X_HANDLE})`}
           aria-label={`SynapseFly on X, ${X_HANDLE}`} className="btn95 flex h-[22px] shrink-0 items-center gap-1 text-[11px] no-underline">
           <XGlyph /><span className="hidden md:inline">{X_HANDLE}</span>

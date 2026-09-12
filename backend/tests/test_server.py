@@ -768,6 +768,51 @@ def test_market_source_frame_shape_end_to_end(headless: Callable[..., Any]) -> N
     assert stored and all(set(e["data"]) == {"mode", "reason"} for e in stored)
 
 
+def test_launch_config_overlays_configured_token_and_chain(
+        headless: Callable[..., Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """Blocker 1 regression: at launch the CA surface shows the configured pair, not the sim tape's identity.
+
+    In the launch configuration (``FLY_MARKET=dexscreener`` + ``FLY_TOKEN_ADDRESS`` + ``FLY_CHAIN`` +
+    ``FLY_TOKEN_LIVE=1``) DexScreener has not indexed the brand-new pair yet, so the feed serves the sim tape
+    (``sim(fallback)``) and ``feed.hello()`` - which by its documented contract describes the served SOURCE -
+    reports ``token: ""`` and ``chain: "sim"``. The loop must overlay the CONFIGURED address and chain onto the
+    hello.market block AND every tick.market block, regardless of which source is on the wire, so CA.txt never
+    denies its own launch. ``token_live`` still comes from ``FLY_TOKEN_LIVE`` alone.
+    """
+    from flybrain.market import dexscreener as dexmod
+
+    def no_network(chain: str, token: str, timeout_s: float = 10.0, **kw: Any) -> list[dict]:
+        raise RuntimeError("DexScreener has not indexed the new pair yet")
+
+    monkeypatch.setattr(dexmod, "fetch_pairs", no_network)
+
+    addr = "0xA70fC6B1E6E3dB0C2F0B9cF1bB9cAbCdEf012345"
+    ctx = headless(FLY_MARKET="dexscreener", FLY_TOKEN_ADDRESS=addr, FLY_CHAIN="base", FLY_TOKEN_LIVE="1")
+
+    # The feed genuinely serves the sim tape, and its hello still honestly describes THAT source (unchanged).
+    tick = ctx.loop.tick_once()
+    assert ctx.feed.mode in ("sim", "sim(fallback)")
+    served = ctx.feed.hello()
+    assert served["token"] == "" and served["chain"] == "sim"
+
+    # ...but the loop overlays the configured identity, so the CA surface is correct from the first frame.
+    hello = ctx.loop.build_hello()
+    hm = hello["market"]
+    assert hm["token"] == addr, "hello.market.token must be the configured FLY_TOKEN_ADDRESS at launch"
+    assert hm["chain"] == "base", "hello.market.chain must be the configured FLY_CHAIN, not the sim label"
+    assert hm["token_live"] is True          # FLY_TOKEN_LIVE=1, untouched by the overlay
+    HelloMsg.model_validate(hello)
+
+    # the configured chain rides every tick too (a client that rehydrates from a tick must not read "chain sim")
+    assert tick["market"]["chain"] == "base"
+    assert tick["market"]["token_live"] is True
+    TickMsg.model_validate(tick)
+
+    # control: FLY_MARKET=sim configures no real pair, so nothing is overlaid (the feed's own identity stands)
+    sim_hello = headless().loop.build_hello()
+    assert sim_hello["market"]["token"] == "" and sim_hello["market"]["chain"] == "sim"
+
+
 # --------------------------------------------------------------------------------------------------
 # out-of-band feature events (SPEC d.8) - the FeatureExtractor queue is the only source
 # --------------------------------------------------------------------------------------------------

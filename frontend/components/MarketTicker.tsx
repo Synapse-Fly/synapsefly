@@ -6,12 +6,17 @@
 // plus the Options > Market regime buttons as .btn95 chips and the encoder's candle sign from `tick.drives.candle`.
 // `market` frames arrive over the socket bus (~1 Hz sim, ~1/60 Hz DexScreener) and are folded into a small external
 // store; the panel re-renders through useSyncExternalStore at <= 4 Hz. Nothing here calls setState from a tick handler.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FlySocket } from "@/lib/ws";
 import type { TickStore } from "@/lib/store";
 import type { Candle, MarketMode, MarketMsg, MarketSnapshot, TickMarket, TickMsg, Trade } from "@/lib/types";
 import { fmtCompact, fmtPrice, postMarketMode } from "@/lib/api";
-import { NOT_LAUNCHED, NOT_LAUNCHED_NOTE, SIM_FEED_NOTE, TOKEN, standInFeedNote, tokenLive } from "@/lib/brand";
+import {
+  NOT_LAUNCHED, NOT_LAUNCHED_NOTE, SIM_FEED_NOTE, TOKEN, contractAddress, shortAddress, standInFeedNote, tokenLive,
+} from "@/lib/brand";
+// The SAME button the CA.txt window uses, deliberately imported rather than reimplemented: one clipboard path, one
+// set of failure states, for both surfaces (see components/ContractWindow.tsx).
+import { CopyButton } from "@/components/ContractWindow";
 
 export interface MarketTickerProps { sock: FlySocket }
 
@@ -305,6 +310,8 @@ export function MarketTicker({ sock }: MarketTickerProps) {
   const tick = snap.tick;                            // 4 Hz snapshot (section e.5), same notify throttle as the rings
   const [pending, setPending] = useState<MarketMode | null>(null);
   const [chart, setChart] = useState<"line" | "candle">("line");
+  /** The truncated address in the CA row: selected for the visitor if the clipboard refuses the Copy button. */
+  const caRef = useRef<HTMLSpanElement | null>(null);
 
   // market frames from the socket bus (the `on` callback is stable across socket meta updates)
   useEffect(() => on("market", (m) => hist.pushFrame(m)), [on, hist]);
@@ -334,6 +341,10 @@ export function MarketTicker({ sock }: MarketTickerProps) {
   const candle: Candle | null = tick?.drives.candle ?? null;
   const modes: readonly MarketMode[] = hello?.market_modes?.length ? hello.market_modes : DEFAULT_MODES;
   const tokenSet = Boolean(hello?.market.token);
+  // The contract address, from the one place it exists on the wire (`hello.market.token` = FLY_TOKEN_ADDRESS). Shown
+  // only when `live` - before launch the address on the wire is somebody else's token, and printing it in a panel
+  // headed "$SYNAPSE" would be exactly the claim the rest of this panel exists to avoid.
+  const ca = contractAddress(hello?.market.token);
 
   /** True when the server state already shows `mode` (regime forced / source switched). */
   const serverHas = (mode: MarketMode): boolean => {
@@ -389,6 +400,31 @@ export function MarketTicker({ sock }: MarketTickerProps) {
       <div className="font-mono text-[16px] font-bold leading-[18px]" data-testid="price">
         ${fmtPrice(price)}
       </div>
+      {/* The contract address, directly under the price, ONLY once the server says the token is live. Truncated 6/4
+          because this panel is ~170 px wide; the full string is in the tooltip, in the sr-only span the Copy button's
+          Ctrl+C fallback selects, and in CA.txt - which is where the "CA" chip on the taskbar and the desktop icon
+          both land. Never the truncated form on a clipboard: a half address is worse than no address. */}
+      {live && ca ? (
+        <div className="flex min-w-0 items-center gap-1" data-testid="ca-row">
+          <span className="shrink-0 text-[#404040]">CA</span>
+          <span
+            className="bevel-in relative min-w-0 max-w-full truncate bg-white px-1 font-mono text-[10px] leading-[14px]"
+            title={ca}
+          >
+            <span aria-hidden="true">{shortAddress(ca)}</span>
+            {/* Rendered, not display:none - the Ctrl+C fallback selects THIS (the whole address), and a screen
+                reader reads it instead of the elided one. */}
+            <span ref={caRef} className="sr-only select-text">{ca}</span>
+          </span>
+          <CopyButton
+            value={ca}
+            target={caRef}
+            className="btn95 shrink-0 text-[9px] leading-[14px]"
+            title={`Copy the full $${TOKEN} contract address (${ca})`}
+            testId="ca-row-copy"
+          />
+        </div>
+      ) : null}
       {simulated ? (
         <div className="text-[10px] text-[#a80000]" data-testid="sim-disclaimer">
           {SIM_FEED_NOTE}

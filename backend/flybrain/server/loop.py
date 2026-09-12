@@ -642,6 +642,26 @@ class SimulationLoop(threading.Thread):
             },
         }
 
+    def _configured_identity(self) -> tuple[str, str] | None:
+        """The launch identity ``(token_address, chain)`` when one is configured, else ``None``.
+
+        The contract address and its chain are CONFIGURATION (``FLY_TOKEN_ADDRESS`` / ``FLY_CHAIN``), not feed
+        state: with ``FLY_MARKET=dexscreener`` and an address set, they are fixed for the life of the process.
+        ``feed.hello()`` (correctly, by its documented contract) describes the SOURCE currently on the wire, so
+        at launch - while DexScreener has not yet indexed the new pair and the feed is serving the sim tape
+        (``sim`` / ``sim(fallback)``) - it reports ``token: "" chain: "sim"``. That is the source's truth, not
+        the project's identity, so every frame overlays the configured pair on top of it (SPEC d.1). Returns
+        ``None`` when no real pair is configured (``FLY_MARKET=sim`` or an empty address), leaving the feed's
+        own description untouched.
+        """
+        if str(getattr(self.settings, "market", "sim")) != "dexscreener":
+            return None
+        token = str(getattr(self.settings, "token_address", "") or "")
+        if not token:
+            return None
+        chain = str(getattr(self.settings, "chain", "solana") or "solana")
+        return token, chain
+
     def _hello_market(self) -> dict:
         """``hello.market`` (SPEC d.1) plus the launch disclosure of ``FLY_TOKEN_LIVE``.
 
@@ -650,15 +670,18 @@ class SimulationLoop(threading.Thread):
         ``FLY_TOKEN_LIVE=1`` together with the project's own pair: while it is false the numbers on the wire
         belong to a third-party pair that is only the brain's sensory input, and no surface may present them as
         this project's own price / market cap / liquidity. ``pair`` and ``dex`` complete the identity of that
-        pair (``chain``, ``symbol`` and ``token`` are already in the block) so the UI can name it; they are
-        ``None`` until the first snapshot lands, which is why ``token`` - the configured address - stays the
-        authoritative identity.
+        pair so the UI can name it; they are ``None`` until the first snapshot lands. The configured
+        ``token`` / ``chain`` are overlaid (see ``_configured_identity``) so the CA surface shows the real
+        address from the first frame, even while the sim tape is still on the wire at launch.
         """
         block = dict(self.feed.hello())
         snap = getattr(self.feed, "last_snapshot", None)
         block["token_live"] = bool(getattr(self.settings, "token_live", False))
         block["pair"] = str(getattr(snap, "pair", "") or "") or None
         block["dex"] = str(getattr(snap, "dex", "") or "") or None
+        identity = self._configured_identity()
+        if identity is not None:
+            block["token"], block["chain"] = identity
         return block
 
     def _hello_agent(self) -> dict:
@@ -735,6 +758,11 @@ class SimulationLoop(threading.Thread):
         body["mode"] = self.feed.mode
         body["last_trade"] = None if self._last_trade is None else self._last_trade.to_wire()
         body["token_live"] = bool(getattr(self.settings, "token_live", False))
+        # The configured chain is the authoritative identity (see ``_configured_identity``): a client that
+        # rehydrates from a tick must not read "chain sim" off a launch-config feed serving the sim tape.
+        identity = self._configured_identity()
+        if identity is not None:
+            body["chain"] = identity[1]
         return body
 
     # ================================================================= replay

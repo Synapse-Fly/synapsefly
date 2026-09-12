@@ -19,10 +19,10 @@
 import type { ReactElement } from "react";
 
 export type IconName =
-  | "paint" | "oscilloscope" | "status" | "brain" | "notepad" | "x" | "github" | "readme" | "bin";
+  | "paint" | "oscilloscope" | "status" | "brain" | "notepad" | "contract" | "x" | "github" | "readme" | "bin";
 
 export const ICON_NAMES: readonly IconName[] = [
-  "paint", "oscilloscope", "status", "brain", "notepad", "x", "github", "readme", "bin",
+  "paint", "oscilloscope", "status", "brain", "notepad", "contract", "x", "github", "readme", "bin",
 ] as const;
 
 /** Art grid edge, in art units. Also the SVG viewBox size. */
@@ -135,6 +135,29 @@ const ART: Readonly<Record<IconName, readonly string[]>> = {
     "...kwggggwwwk...",
     "...kkkkkkkkkk...",
     "................",
+  ],
+  // CA.txt: the contract-address document. Deliberately NOT the notepad sheet - at launch these two icons sit five
+  // cells apart in the same column ("CA.txt" and "tweets.txt") and a visitor hunting for the address must be able to
+  // tell them apart at a glance, so this sheet is square-cornered (no folded corner), sits one pixel left and up, and
+  // carries a gold coin overlapping its bottom-right corner. The coin is the only saturated yellow on the desktop, so
+  // at 16 px it is the thing you actually see; at 48 px it is a coin with an olive shadow on its lower-right.
+  contract: [
+    "..kkkkkkkkkk....",
+    "..kwwwwwwwwk....",
+    "..kwggggggwk....",
+    "..kwwwwwwwwk....",
+    "..kwggggggwk....",
+    "..kwwwwwwwwk....",
+    "..kwggggwwwk....",
+    "..kwwwwwwwwk....",
+    "..kwggggggwk....",
+    "..kwwwwwwwkkk...",
+    "..kwgggggkeeek..",
+    "..kwwwwwkeeeeek.",
+    "..kwgggwkeeeeok.",
+    "..kkkkkkkeeeook.",
+    ".........keook..",
+    "..........kkk...",
   ],
   // X (formerly Twitter): white mark on the black tile.
   x: [

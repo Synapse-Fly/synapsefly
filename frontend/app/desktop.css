@@ -218,6 +218,34 @@
   }
 }
 
+/* ------------------------------------------------------------- taskbar tray: the CA chip
+
+   "Where is the contract address" is the question the launch post sends people here to answer, so the answer has a
+   permanent handle on the taskbar - next to the X and GitHub chips, in the same 22 px bevelled shape, but a button
+   rather than a link: it opens CA.txt on this page.
+
+   `flex: none` is the load-bearing line. The tray (chip, X, GitHub, the connection LED, the clock) and the Start
+   button never shrink; only .taskbar-apps does, and it scrolls. That is what keeps Start, the LED and the clock on a
+   390 px taskbar no matter how many windows are open. */
+.ca-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px;
+  flex: none;
+  font-size: 11px;
+  font-weight: bold;
+}
+/* Under the md breakpoint (768 px, where the `hidden md:inline` label disappears) the chip is its 16 px icon alone -
+   no label, no gap, so it costs the window strip 24 px instead of 46. */
+@media (max-width: 767px) {
+  .ca-chip {
+    gap: 0;
+    padding: 0 2px;
+  }
+}
+
 /* --------------------------------------------------------- narrow taskbar: icon-only window buttons
 
    A 390 px phone leaves the window strip ~124 px, and a 96 px minimum meant ONE of five open windows was on screen;
