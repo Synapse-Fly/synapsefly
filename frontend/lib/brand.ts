@@ -28,9 +28,9 @@ export function tokenLive(...flags: readonly (boolean | null | undefined)[]): bo
 }
 
 /** The qualifier that rides with the ticker itself, so no price is ever printed under a bare "$SYNAPSE". */
-export const NOT_LAUNCHED = "not launched";
+export const NOT_LAUNCHED = "coming soon";
 /** One plain sentence, for the surfaces with room for prose (intro modal, share dialog). */
-export const NOT_LAUNCHED_NOTE = `$${TOKEN} has not launched: there is no ${TOKEN} token and no ${TOKEN} market yet.`;
+export const NOT_LAUNCHED_NOTE = `$${TOKEN} is coming soon: there is no ${TOKEN} token and no ${TOKEN} market yet.`;
 /** FLY_MARKET=sim: the numbers are generated here. Wording kept verbatim from the original sim disclaimer. */
 export const SIM_FEED_NOTE = `simulated feed \u2014 no $${TOKEN} market yet`;
 
@@ -70,7 +70,7 @@ export const CA_VERIFY_NOTE =
   `Check this address against this page and the pinned post on ${X_HANDLE} before you buy. `
   + `Same ticker, different address is NOT us.`;
 /** Pre-launch, in place of an address - so an early visitor leaves knowing that every "CA" in their replies is fake. */
-export const CA_NONE_NOTE = `no contract address yet \u2014 anything you see elsewhere is not us`;
+export const CA_NONE_NOTE = `coming soon \u2014 no contract address yet. anything you see elsewhere is not us`;
 
 /**
  * The address the UI is allowed to print, or null. `hello.market.token` is an empty string until the owner sets
